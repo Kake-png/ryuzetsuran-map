@@ -11,7 +11,7 @@ import {
 
 const actionSchema = z.discriminatedUnion("action", [
   z.object({
-    action: z.enum(["approve", "hide", "reject", "undo_latest_observation"]),
+    action: z.enum(["approve", "hide", "delete", "undo_latest_observation"]),
     pinId: z.string().trim(),
   }),
   z.object({
@@ -24,7 +24,7 @@ const filterSchema = z.object({
   q: z.string().trim().max(80).default(""),
   requestStatus: z.enum(["all", "pending", "resolved"]).default("pending"),
   reason: z.enum(["all", "private_property", "no_permission", "dangerous", "wrong_info", "duplicate", "other"]).default("all"),
-  pinVisibility: z.enum(["all", "approved", "pending", "hidden", "rejected"]).default("all"),
+  pinVisibility: z.enum(["all", "approved", "pending", "hidden"]).default("all"),
 });
 
 export async function GET(request: Request) {
@@ -59,12 +59,12 @@ export async function GET(request: Request) {
                   permission_confirmed, visibility, created_at,
                   (SELECT COUNT(*) FROM observations o WHERE o.agave_public_id = agaves.public_id AND o.visibility = 'approved') AS observation_count
            FROM agaves
-           WHERE (? = 'all' OR visibility = ?)
+           WHERE (? = 'all' OR visibility = ? OR (? = 'hidden' AND visibility = 'rejected'))
              AND (? = '' OR public_id LIKE ? OR title LIKE ? OR municipality LIKE ?)
            ORDER BY created_at DESC
            LIMIT 200`,
         )
-        .bind(filters.pinVisibility, filters.pinVisibility, filters.q, like, like, like)
+        .bind(filters.pinVisibility, filters.pinVisibility, filters.pinVisibility, filters.q, like, like, like)
         .all(),
       db
         .prepare(
@@ -88,6 +88,7 @@ export async function GET(request: Request) {
       const key = typeof pin.photo_key === "string" ? pin.photo_key : null;
       return {
         ...pin,
+        visibility: pin.visibility === "rejected" ? "hidden" : pin.visibility,
         photo_key: undefined,
         photo_url: key
           ? `/api/photos/${key.split("/").map(encodeURIComponent).join("/")}`
@@ -135,16 +136,51 @@ export async function POST(request: Request) {
         ]);
         return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
       }
-      const visibility =
-        parsed.data.action === "approve" ? "approved" : parsed.data.action === "hide" ? "hidden" : "rejected";
-      const result = await db.prepare(
-        "UPDATE agaves SET visibility = ?, updated_at = CURRENT_TIMESTAMP WHERE public_id = ?",
-      ).bind(visibility, parsed.data.pinId).run();
-      if (!result.meta.changes) throw new HttpError(404, "対象のピンが見つかりません。");
-      if (parsed.data.action === "approve") {
-        await db.prepare("UPDATE observations SET visibility = 'approved' WHERE agave_public_id = ? AND visibility = 'pending'").bind(parsed.data.pinId).run();
-      } else if (parsed.data.action === "reject") {
-        await db.prepare("UPDATE observations SET visibility = 'hidden' WHERE agave_public_id = ? AND visibility = 'pending'").bind(parsed.data.pinId).run();
+      if (parsed.data.action === "delete") {
+        const [pin, observations] = await Promise.all([
+          db.prepare("SELECT photo_key FROM agaves WHERE public_id = ? LIMIT 1")
+            .bind(parsed.data.pinId)
+            .first<{ photo_key: string | null }>(),
+          db.prepare("SELECT photo_key FROM observations WHERE agave_public_id = ? AND photo_key IS NOT NULL")
+            .bind(parsed.data.pinId)
+            .all<{ photo_key: string }>(),
+        ]);
+        if (!pin) throw new HttpError(404, "対象のピンが見つかりません。");
+
+        const photoKeys = new Set<string>();
+        if (pin.photo_key) photoKeys.add(pin.photo_key);
+        for (const observation of observations.results) {
+          if (observation.photo_key) photoKeys.add(observation.photo_key);
+        }
+
+        await db.batch([
+          db.prepare("DELETE FROM observations WHERE agave_public_id = ?").bind(parsed.data.pinId),
+          db.prepare("DELETE FROM change_requests WHERE agave_public_id = ?").bind(parsed.data.pinId),
+          db.prepare("DELETE FROM location_restrictions WHERE agave_public_id = ?").bind(parsed.data.pinId),
+          db.prepare("DELETE FROM agaves WHERE public_id = ?").bind(parsed.data.pinId),
+        ]);
+
+        const bucket = runtimeEnv().BUCKET;
+        if (bucket) {
+          await Promise.all(
+            [...photoKeys].map(async (key) => {
+              try {
+                await bucket.delete(key);
+              } catch (error) {
+                console.error(`Failed to delete R2 object: ${key}`, error);
+              }
+            }),
+          );
+        }
+      } else {
+        const visibility = parsed.data.action === "approve" ? "approved" : "hidden";
+        const result = await db.prepare(
+          "UPDATE agaves SET visibility = ?, updated_at = CURRENT_TIMESTAMP WHERE public_id = ?",
+        ).bind(visibility, parsed.data.pinId).run();
+        if (!result.meta.changes) throw new HttpError(404, "対象のピンが見つかりません。");
+        if (parsed.data.action === "approve") {
+          await db.prepare("UPDATE observations SET visibility = 'approved' WHERE agave_public_id = ? AND visibility = 'pending'").bind(parsed.data.pinId).run();
+        }
       }
     } else if (
       parsed.data.action === "hide_and_resolve" ||

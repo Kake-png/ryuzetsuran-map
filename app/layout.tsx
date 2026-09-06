@@ -5,8 +5,8 @@ export const metadata: Metadata = {
   title: "リュウゼツランマップ",
   description: "巨大なリュウゼツランの開花状況を、安全に投稿・共有する地図。",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/favicon.svg?v=2",
+    shortcut: "/favicon.svg?v=2",
   },
 };
 
