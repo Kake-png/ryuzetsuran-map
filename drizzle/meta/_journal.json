@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1788592502775,
+      "tag": "0000_smooth_shard",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788607478077,
+      "tag": "0001_brave_squirrel_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788618584768,
+      "tag": "0002_nervous_smiling_tiger",
+      "breakpoints": true
+    }
+  ]
+}
