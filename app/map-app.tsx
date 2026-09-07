@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import maplibregl, {
   type Map as MapLibreMap,
   type MapMouseEvent,
@@ -253,12 +252,6 @@ export function MapApp() {
           </div>
         </div>
         <div className="header-actions">
-          <Button variant="ghost" asChild>
-            <Link href="/about">
-              <Info />
-              <span className="desktop-label">このサイトについて</span>
-            </Link>
-          </Button>
           <Button variant="ghost" onClick={() => setSafetyOpen(true)}>
             <ShieldCheck />
             <span className="desktop-label">掲載と見学のルール</span>

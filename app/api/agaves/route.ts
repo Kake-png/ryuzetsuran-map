@@ -33,7 +33,7 @@ const submissionSchema = z
     description: z.string().trim().max(1200),
     photoAlt: z.string().trim().max(160),
     submitterRelation: z.enum(["observer", "owner", "authorized"]),
-    permissionConfirmed: z.enum(["true", "false"]),
+    permissionConfirmed: z.literal("true"),
     rulesAccepted: z.literal("true"),
     startedAt: z.string(),
     website: z.string().max(0),
@@ -41,12 +41,12 @@ const submissionSchema = z
   .superRefine((value, context) => {
     if (
       value.locationType === "private_authorized" &&
-      (value.permissionConfirmed !== "true" || !["owner", "authorized"].includes(value.submitterRelation))
+      !["owner", "authorized"].includes(value.submitterRelation)
     ) {
       context.addIssue({
         code: "custom",
         path: ["submitterRelation"],
-        message: "非公開の私有地は、所有者本人または掲載許可を得た方のみ投稿できます。",
+        message: "私有地は所有者本人または掲載許可を得た方のみ投稿できます。",
       });
     }
     const observation = Date.parse(`${value.observedAt}T00:00:00Z`);
@@ -261,7 +261,7 @@ export async function POST(request: Request) {
           municipality, location_name, location_type, access_note, description,
           photo_key, photo_alt, submitter_relation, permission_confirmed,
           visibility, management_key_hash
-        ) VALUES (?, ?, ?, 'アオノリュウゼツラン', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, 'アオノリュウゼツラン', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
       )
       .bind(
         id,
@@ -281,7 +281,6 @@ export async function POST(request: Request) {
         uploadedKey,
         value.photoAlt || null,
         value.submitterRelation,
-        value.locationType === "private_authorized" ? 1 : 0,
         visibility,
         managementKeyHash,
       ),

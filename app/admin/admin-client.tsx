@@ -39,7 +39,7 @@ type AdminPin = {
   photo_alt: string | null;
   submitter_relation: string;
   permission_confirmed: number;
-  visibility: "approved" | "pending" | "hidden";
+  visibility: "approved" | "pending" | "hidden" | "rejected";
   created_at: string;
   observation_count: number;
 };
@@ -74,6 +74,7 @@ const visibilityLabels: Record<AdminPin["visibility"], string> = {
   approved: "公開中",
   pending: "確認待ち",
   hidden: "非公開",
+  rejected: "掲載終了",
 };
 
 const outcomeLabels: Record<string, string> = {
@@ -193,7 +194,7 @@ export function AdminClient() {
             <label><span>検索</span><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ピンID・受付ID・市区町村・依頼内容" /></label>
             <label><span>依頼の状態</span><select value={requestStatus} onChange={(event) => setRequestStatus(event.target.value)}><option value="pending">未処理</option><option value="resolved">解決済み</option><option value="all">すべて</option></select></label>
             <label><span>依頼理由</span><select value={reason} onChange={(event) => setReason(event.target.value)}><option value="all">すべて</option>{Object.entries(reasonLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-            <label><span>ピンの状態</span><select value={pinVisibility} onChange={(event) => setPinVisibility(event.target.value)}><option value="all">すべて</option><option value="approved">公開中</option><option value="pending">確認待ち</option><option value="hidden">非公開</option></select></label>
+            <label><span>ピンの状態</span><select value={pinVisibility} onChange={(event) => setPinVisibility(event.target.value)}><option value="all">すべて</option><option value="approved">公開中</option><option value="pending">確認待ち</option><option value="hidden">非公開</option><option value="rejected">掲載終了</option></select></label>
             <Button type="submit" disabled={loading}><Search />検索・更新</Button>
           </form>
           <section className="admin-section">
@@ -255,7 +256,6 @@ export function AdminClient() {
               <div>
                 <p className="eyebrow">RECENT PINS</p>
                 <h2>地点・掲載状態</h2>
-                <p>非公開はあとで公開へ戻せます。完全削除は地点・履歴・写真を消し、元に戻せません。</p>
               </div>
               <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
                 <RotateCcw />再読込
@@ -297,22 +297,13 @@ export function AdminClient() {
                       <Button variant="destructive" disabled={loading} onClick={() => void act({ action: "hide", pinId: pin.public_id })}>
                         <EyeOff />非公開
                       </Button>
-                    ) : (
+                    ) : pin.visibility !== "rejected" ? (
                       <Button variant="outline" disabled={loading} onClick={() => void act({ action: "approve", pinId: pin.public_id })}>
                         <Eye />公開する
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      disabled={loading}
-                      onClick={() => {
-                        const confirmed = window.confirm(
-                          `${pin.public_id} を完全に削除します。\n\n地点情報・観察履歴・関連する申告・保存写真も削除され、元に戻せません。`,
-                        );
-                        if (confirmed) void act({ action: "delete", pinId: pin.public_id });
-                      }}
-                    >
-                      <Trash2 />完全削除
+                    ) : null}
+                    <Button variant="ghost" disabled={loading} onClick={() => void act({ action: "reject", pinId: pin.public_id })}>
+                      <Trash2 />掲載終了
                     </Button>
                   </div>
                 </article>

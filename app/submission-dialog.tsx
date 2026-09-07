@@ -164,19 +164,8 @@ export function SubmissionDialog({
       setError("地図上で投稿位置を選んでください。");
       return;
     }
-    if (!rulesAccepted) {
+    if (!permissionConfirmed || !rulesAccepted) {
       setError("掲載条件と見学ルールへの確認が必要です。");
-      return;
-    }
-    if (locationType === "private_authorized" && !permissionConfirmed) {
-      setError("非公開の私有地は、所有者本人または掲載許可を得た方だけ投稿できます。");
-      return;
-    }
-    if (
-      locationType === "private_authorized" &&
-      !["owner", "authorized"].includes(submitterRelation)
-    ) {
-      setError("私有地との関係を「所有者・管理者本人」または「掲載許可を得た」にしてください。");
       return;
     }
 
@@ -186,7 +175,7 @@ export function SubmissionDialog({
     form.set("submitterRelation", submitterRelation);
     form.set("latitude", String(coordinates.latitude));
     form.set("longitude", String(coordinates.longitude));
-    form.set("permissionConfirmed", locationType === "private_authorized" ? "true" : "false");
+    form.set("permissionConfirmed", "true");
     form.set("rulesAccepted", "true");
     form.set("startedAt", String(startedAt));
     form.set("website", "");
@@ -251,7 +240,7 @@ export function SubmissionDialog({
               <p className="dialog-kicker">NEW SIGHTING</p>
               <DialogTitle>アオノリュウゼツランを投稿</DialogTitle>
               <DialogDescription>
-                公園・公道から見える場所・来訪可能な施設は、そのまま投稿できます。個人宅など非公開の私有地だけは、所有者本人または掲載許可を得た場合に限ります。
+                正確な位置を公開します。私有地は所有者本人、または明示的な掲載許可を得た場合だけ投稿できます。
               </DialogDescription>
             </DialogHeader>
 
@@ -354,17 +343,15 @@ export function SubmissionDialog({
             <div className="declaration-box">
               <ShieldAlert aria-hidden="true" />
               <div className="declaration-items">
-                {locationType === "private_authorized" && (
-                  <label>
-                    <Checkbox checked={permissionConfirmed} onCheckedChange={(value) => setPermissionConfirmed(value === true)} />
-                    <span>私はこの土地・施設の所有者または管理者本人です、または正確な位置をこの地図に掲載する許可を得ています。</span>
-                  </label>
-                )}
+                <label>
+                  <Checkbox checked={permissionConfirmed} onCheckedChange={(value) => setPermissionConfirmed(value === true)} />
+                  <span>公共・来訪可能な場所です。私有地の場合は、私が所有者・管理者本人であるか、正確な位置の掲載許可を得ています。</span>
+                </label>
                 <label>
                   <Checkbox checked={rulesAccepted} onCheckedChange={(value) => setRulesAccepted(value === true)} />
                   <span>写真は自分が撮影したもの、または掲載権限のあるものです。無関係な人、表札、車両ナンバーなどを含めず、見学者に立入許可を与える投稿ではないことを確認しました。</span>
                 </label>
-                <p>公共の場所や公道から確認できる場所について、管理者への事前許可を求めるものではありません。私有地の無許可掲載や安全上の申告があったピンは、確認まで全体を非公開にします。</p>
+                <p>許可の真正性を運営が事前確認するものではありません。無許可掲載・安全上の申告があったピンは、確認まで全体を非公開にします。</p>
               </div>
             </div>
 
