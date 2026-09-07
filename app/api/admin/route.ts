@@ -11,11 +11,11 @@ import {
 
 const actionSchema = z.discriminatedUnion("action", [
   z.object({
-    action: z.enum(["approve", "hide", "reject", "undo_latest_observation"]),
+    action: z.enum(["approve", "hide", "reject", "delete", "undo_latest_observation"]),
     pinId: z.string().trim(),
   }),
   z.object({
-    action: z.enum(["resolve_request", "hide_and_resolve", "restore_and_resolve"]),
+    action: z.enum(["resolve_request", "hide_and_resolve", "restore_and_resolve", "delete_and_resolve"]),
     requestId: z.string().trim(),
   }),
 ]);
@@ -26,6 +26,54 @@ const filterSchema = z.object({
   reason: z.enum(["all", "private_property", "no_permission", "dangerous", "wrong_info", "duplicate", "other"]).default("all"),
   pinVisibility: z.enum(["all", "approved", "pending", "hidden", "rejected"]).default("all"),
 });
+
+async function permanentlyDeletePin(
+  db: D1Database,
+  bucket: R2Bucket | undefined,
+  pinId: string,
+  restrictionSourceId?: string,
+) {
+  const pin = await db
+    .prepare("SELECT photo_key, latitude, longitude FROM agaves WHERE public_id = ? LIMIT 1")
+    .bind(pinId)
+    .first<{ photo_key: string | null; latitude: number; longitude: number }>();
+  if (!pin) throw new HttpError(404, "対象のピンが見つかりません。");
+
+  const observations = await db
+    .prepare("SELECT photo_key FROM observations WHERE agave_public_id = ? AND photo_key IS NOT NULL")
+    .bind(pinId)
+    .all<{ photo_key: string }>();
+  const photoKeys = Array.from(new Set([
+    ...(pin.photo_key ? [pin.photo_key] : []),
+    ...observations.results.map((item) => item.photo_key).filter(Boolean),
+  ]));
+  if (photoKeys.length) {
+    if (!bucket) throw new HttpError(503, "写真ストレージを利用できないため削除を中止しました。");
+    await Promise.all(photoKeys.map((key) => bucket.delete(key)));
+  }
+
+  const statements = [
+    db.prepare("DELETE FROM observations WHERE agave_public_id = ?").bind(pinId),
+    db.prepare("DELETE FROM agaves WHERE public_id = ?").bind(pinId),
+  ];
+  if (restrictionSourceId) {
+    const restriction = await db
+      .prepare("SELECT id FROM location_restrictions WHERE agave_public_id = ? AND status = 'active' LIMIT 1")
+      .bind(pinId)
+      .first<{ id: string }>();
+    if (!restriction) {
+      statements.push(
+        db.prepare(
+          `INSERT INTO location_restrictions (
+            id, source_request_public_id, agave_public_id, latitude, longitude,
+            radius_meters, reason, status
+          ) VALUES (?, ?, ?, ?, ?, 75, 'deleted', 'active')`,
+        ).bind(crypto.randomUUID(), restrictionSourceId, pinId, pin.latitude, pin.longitude),
+      );
+    }
+  }
+  await db.batch(statements);
+}
 
 export async function GET(request: Request) {
   try {
@@ -115,6 +163,10 @@ export async function POST(request: Request) {
     if (!db) throw new HttpError(503, "データベースを利用できません。");
 
     if ("pinId" in parsed.data) {
+      if (parsed.data.action === "delete") {
+        await permanentlyDeletePin(db, runtimeEnv().BUCKET, parsed.data.pinId);
+        return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+      }
       if (parsed.data.action === "undo_latest_observation") {
         const observations = await db.prepare(
           `SELECT public_id, bloom_status, observed_at, description, photo_key, photo_alt
@@ -146,6 +198,19 @@ export async function POST(request: Request) {
       } else if (parsed.data.action === "reject") {
         await db.prepare("UPDATE observations SET visibility = 'hidden' WHERE agave_public_id = ? AND visibility = 'pending'").bind(parsed.data.pinId).run();
       }
+    } else if (parsed.data.action === "delete_and_resolve") {
+      const change = await db
+        .prepare("SELECT agave_public_id FROM change_requests WHERE public_id = ? LIMIT 1")
+        .bind(parsed.data.requestId)
+        .first<{ agave_public_id: string }>();
+      if (!change) throw new HttpError(404, "対象の依頼が見つかりません。");
+      await permanentlyDeletePin(db, runtimeEnv().BUCKET, change.agave_public_id, parsed.data.requestId);
+      await db.prepare(
+        `UPDATE change_requests
+         SET status = 'resolved', outcome = 'deleted', restrict_location = 1,
+             resolved_at = CURRENT_TIMESTAMP
+         WHERE public_id = ?`,
+      ).bind(parsed.data.requestId).run();
     } else if (
       parsed.data.action === "hide_and_resolve" ||
       parsed.data.action === "restore_and_resolve"

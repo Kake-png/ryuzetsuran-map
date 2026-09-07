@@ -18,6 +18,16 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { BLOOM_STATUSES } from "@/lib/agave";
 
 type AdminPin = {
@@ -82,7 +92,12 @@ const outcomeLabels: Record<string, string> = {
   restored: "公開へ復帰",
   kept_hidden: "非公開を継続",
   no_change: "変更なし",
+  deleted: "データを完全削除",
 };
+
+type DeleteTarget =
+  | { kind: "pin"; id: string }
+  | { kind: "request"; id: string; pinId: string };
 
 export function AdminClient() {
   const [token, setToken] = useState("");
@@ -95,6 +110,7 @@ export function AdminClient() {
   const [requestStatus, setRequestStatus] = useState("pending");
   const [reason, setReason] = useState("all");
   const [pinVisibility, setPinVisibility] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   async function load(candidate = token) {
     if (!candidate) return;
@@ -147,10 +163,20 @@ export function AdminClient() {
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error || "操作を完了できませんでした。");
       await load();
+      return true;
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "操作を完了できませんでした。");
       setLoading(false);
+      return false;
     }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    const completed = deleteTarget.kind === "pin"
+      ? await act({ action: "delete", pinId: deleteTarget.id })
+      : await act({ action: "delete_and_resolve", requestId: deleteTarget.id });
+    if (completed) setDeleteTarget(null);
   }
 
   return (
@@ -235,6 +261,11 @@ export function AdminClient() {
                         onClick={() => void act({ action: "hide_and_resolve", requestId: item.public_id })}
                       ><EyeOff />非公開を確定</Button>
                       <Button
+                        variant="destructive"
+                        disabled={loading}
+                        onClick={() => setDeleteTarget({ kind: "request", id: item.public_id, pinId: item.agave_public_id })}
+                      ><Trash2 />完全削除して完了</Button>
+                      <Button
                         variant="outline"
                         disabled={loading}
                         onClick={() => void act({ action: "restore_and_resolve", requestId: item.public_id })}
@@ -303,7 +334,10 @@ export function AdminClient() {
                       </Button>
                     ) : null}
                     <Button variant="ghost" disabled={loading} onClick={() => void act({ action: "reject", pinId: pin.public_id })}>
-                      <Trash2 />掲載終了
+                      <EyeOff />掲載終了
+                    </Button>
+                    <Button variant="destructive" disabled={loading} onClick={() => setDeleteTarget({ kind: "pin", id: pin.public_id })}>
+                      <Trash2 />完全削除
                     </Button>
                   </div>
                 </article>
@@ -313,6 +347,22 @@ export function AdminClient() {
           {error && <p className="form-error" role="alert">{error}</p>}
         </div>
       )}
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>この投稿データを完全に削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              地点データ、観察履歴、R2に保存された写真を削除します。元に戻せません。削除要請から実行する場合は、要請記録と再登録制限だけが運営用に残ります。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>キャンセル</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" disabled={loading} onClick={() => void confirmDelete()}>
+              {loading ? "削除中…" : "完全に削除する"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

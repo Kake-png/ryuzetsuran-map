@@ -6,7 +6,6 @@ import {
   MapPinned,
   NotebookPen,
   ShieldCheck,
-  Snowflake,
   Sprout,
 } from "lucide-react";
 import Link from "next/link";
@@ -58,14 +57,14 @@ const smallPlants = [
     ],
   },
   {
-    name: "センペルビウム",
-    latin: "Sempervivum",
-    icon: Snowflake,
-    lead: "小ささに加えて寒さへの強さを優先するならこちら。屋外で育てやすい一方、日本の高温多湿な夏には風通しが必要です。",
+    name: "アガベ・笹の雪",
+    latin: "Agave victoriae-reginae",
+    icon: Sprout,
+    lead: "整った白い模様が人気の小型アガベ。大型種より鉢で管理しやすく、リュウゼツランらしい姿も楽しめます。葉先は鋭いため置き場には注意が必要です。",
     facts: [
-      ["大きさ", "小さなロゼットが子株で増える"],
-      ["置き場", "日当たりと風通しのよい屋外"],
-      ["寒さ", "比較的強い。過湿と夏の蒸れに注意"],
+      ["大きさ", "多くのアガベより小型で鉢管理しやすい"],
+      ["置き場", "日当たりと風通しのよい場所"],
+      ["寒さ", "霜・凍結と冬の過湿を避ける"],
     ],
   },
 ];
@@ -163,7 +162,7 @@ export default function GuidePage() {
           <Sprout aria-hidden="true" />
           <div>
             <h3>どちらを選ぶ？</h3>
-            <p>丸い姿と室内での眺めやすさならハオルチア、寒さと屋外管理を優先するならセンペルビウム。小さい植物でも、品種・地域・置き場によって育ち方は変わります。</p>
+            <p>丸い姿と室内での眺めやすさならハオルチア、リュウゼツランらしい姿を小さな鉢で楽しむなら笹の雪。小さい植物でも、品種・地域・置き場によって育ち方は変わります。</p>
           </div>
         </aside>
       </section>

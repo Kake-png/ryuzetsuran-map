@@ -30,3 +30,12 @@ test("fails closed without a production rate-limit secret and throttles admin ac
   assert.match(security, /投稿保護機能の設定が完了していません/);
   assert.match(admin, /enforceRateLimit\(request, "admin-access", 80\)/);
 });
+
+test("permanently deletes pin content without erasing moderation history", async () => {
+  const admin = await readFile(new URL("../app/api/admin/route.ts", import.meta.url), "utf8");
+  assert.match(admin, /DELETE FROM observations WHERE agave_public_id = \?/);
+  assert.match(admin, /DELETE FROM agaves WHERE public_id = \?/);
+  assert.match(admin, /bucket\.delete\(key\)/);
+  assert.doesNotMatch(admin, /DELETE FROM change_requests/);
+  assert.doesNotMatch(admin, /DELETE FROM location_restrictions/);
+});
