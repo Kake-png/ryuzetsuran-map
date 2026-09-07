@@ -59,16 +59,16 @@ const smallPlants = [
     ],
   },
   {
-    name: "アガベ・笹の雪",
-    latin: "Agave victoriae-reginae",
+    name: "アガベ・トウメヤナ・ベラ",
+    latin: "Agave toumeyana var. bella",
     icon: Sprout,
-    imageSrc: "/sasano-yuki-botanical-v2.webp",
-    imageAlt: "白い模様のあるアガベ・笹の雪の植物画",
-    lead: "整った白い模様が人気の小型アガベ。大型種より鉢で管理しやすく、リュウゼツランらしい姿も楽しめます。葉先は鋭いため置き場には注意が必要です。",
+    imageSrc: "/toumeyana-botanical.webp",
+    imageAlt: "細い葉に白い糸状の繊維が伸びるアガベ・トウメヤナの植物画",
+    lead: "細い葉の縁から白い糸状の繊維を伸ばす、小型のアガベ。小さな鉢でも姿を楽しみやすく、ハオルチアとは違うアガベらしさがあります。葉先には注意が必要です。",
     facts: [
-      ["大きさ", "多くのアガベより小型で鉢管理しやすい"],
+      ["大きさ", "小型で、小鉢や鉢植えに向く"],
       ["置き場", "日当たりと風通しのよい場所"],
-      ["寒さ", "霜・凍結と冬の過湿を避ける"],
+      ["寒さ", "比較的強いが、凍結と冬の過湿を避ける"],
     ],
   },
 ];
@@ -148,7 +148,7 @@ export default function GuidePage() {
         <div className="small-plant-grid">
           {smallPlants.map((plant) => (
             <article className="small-plant-card" key={plant.name}>
-              <img className="small-plant-image" src={plant.imageSrc} alt={plant.imageAlt} width={640} height={420} />
+              <img className="small-plant-image" src={plant.imageSrc} alt={plant.imageAlt} width={1536} height={1024} />
               <header>
                 <plant.icon aria-hidden="true" />
                 <div><h3>{plant.name}</h3><p><i>{plant.latin}</i></p></div>
@@ -167,7 +167,7 @@ export default function GuidePage() {
           <Sprout aria-hidden="true" />
           <div>
             <h3>どちらを選ぶ？</h3>
-            <p>丸い姿と室内での眺めやすさならハオルチア、リュウゼツランらしい姿を小さな鉢で楽しむなら笹の雪。小さい植物でも、品種・地域・置き場によって育ち方は変わります。</p>
+            <p>丸い姿と室内での眺めやすさならハオルチア、細い葉と白い糸状の繊維を楽しむならトウメヤナ。小さい植物でも、品種・地域・置き場によって育ち方は変わります。</p>
           </div>
         </aside>
       </section>
