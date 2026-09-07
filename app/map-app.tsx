@@ -8,6 +8,7 @@ import maplibregl, {
 import {
   AlertTriangle,
   Binoculars,
+  BookOpenText,
   CalendarDays,
   ChevronRight,
   Flower2,
@@ -20,6 +21,7 @@ import {
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 
@@ -247,11 +249,15 @@ export function MapApp() {
             <Flower2 />
           </div>
           <div>
-            <p className="brand-kicker">RYUZETSU</p>
+            <p className="brand-kicker">FIELD ATLAS · AGAVE AMERICANA</p>
             <h1>リュウゼツランマップ</h1>
           </div>
         </div>
-        <div className="header-actions">
+        <nav className="header-actions" aria-label="サイト内メニュー">
+          <Link href="/guide" className="header-guide-link">
+            <BookOpenText aria-hidden="true" />
+            <span>観察・育成帖</span>
+          </Link>
           <Button variant="ghost" onClick={() => setSafetyOpen(true)}>
             <ShieldCheck />
             <span className="desktop-label">掲載と見学のルール</span>
@@ -260,7 +266,7 @@ export function MapApp() {
             <Plus />
             投稿する
           </Button>
-        </div>
+        </nav>
       </header>
 
       <div className="safety-strip">
@@ -272,7 +278,7 @@ export function MapApp() {
         <aside className="map-sidebar" aria-label="リュウゼツラン情報">
           <div className="sidebar-controls">
             <div>
-              <p className="eyebrow">STATUS</p>
+              <p className="eyebrow">OBSERVATION INDEX</p>
               <h2>いまの様子から探す</h2>
             </div>
             <div className="filter-row" role="group" aria-label="開花状況で絞り込む">
