@@ -13,7 +13,7 @@ export type BloomStatus = keyof typeof BLOOM_STATUSES;
 export const LOCATION_TYPES = {
   public_space: "公共の場所・公道から見える場所",
   visitor_facility: "植物園・店舗など来訪を受け入れる施設",
-  private_authorized: "私有地（所有者本人または掲載許可あり）",
+  private_authorized: "私有地内（公道から確認・許可あり等）",
 } as const;
 
 export type LocationType = keyof typeof LOCATION_TYPES;

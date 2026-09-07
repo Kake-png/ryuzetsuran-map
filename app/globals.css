@@ -2447,6 +2447,15 @@ body {
   box-shadow: 4px 4px 0 #d2c6ad;
 }
 
+.small-plant-image {
+  display: block;
+  width: calc(100% + 56px);
+  height: 190px;
+  margin: -28px -28px 24px;
+  object-fit: cover;
+  border-bottom: 1px solid #d8cdb6;
+}
+
 .small-plant-card > header {
   display: flex;
   align-items: center;
@@ -2732,6 +2741,12 @@ body {
 
   .small-plant-card {
     padding: 23px 20px;
+  }
+
+  .small-plant-image {
+    width: calc(100% + 40px);
+    height: 170px;
+    margin: -23px -20px 20px;
   }
 
   .guide-commerce-note {

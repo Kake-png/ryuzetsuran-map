@@ -73,7 +73,7 @@ type AdminRequest = {
 
 const reasonLabels: Record<string, string> = {
   private_property: "私有地・生活への影響",
-  no_permission: "掲載許可を出していない",
+  no_permission: "私有地への掲載に関する懸念",
   dangerous: "見学に危険がある",
   wrong_info: "内容が間違っている",
   duplicate: "重複している",
@@ -186,7 +186,7 @@ export function AdminClient() {
           <Link href="/" className="back-link"><ArrowLeft />地図へ戻る</Link>
           <p className="dialog-kicker">MODERATION</p>
           <h1>運営確認箱</h1>
-          <p>普段の投稿は自動公開。申告が届いたときだけ、ここで非公開の継続または復帰を判断します。</p>
+          <p>普段の投稿は自動公開。私有地・生活や安全に関する申告は一時非公開とし、内容と再公開の根拠を記録して対応します。</p>
         </div>
         <ShieldCheck aria-hidden="true" />
       </header>

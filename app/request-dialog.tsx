@@ -120,7 +120,7 @@ export function ChangeRequestDialog({
               <p className="dialog-kicker">CORRECTION / TAKEDOWN</p>
               <DialogTitle>情報の修正・削除を依頼</DialogTitle>
               <DialogDescription>
-                投稿者でなくても送信できます。無許可の私有地や危険に関する申告では、位置をぼかさずピン全体を一時非公開にします。
+                投稿者でなくても送信できます。私有地・生活への影響や安全に関する申告では、位置をぼかさずピン全体を一時非公開にします。
               </DialogDescription>
             </DialogHeader>
 
@@ -151,7 +151,7 @@ export function ChangeRequestDialog({
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="private_property">私有地・生活への影響</SelectItem>
-                    <SelectItem value="no_permission">掲載許可を出していない</SelectItem>
+                    <SelectItem value="no_permission">私有地への掲載に関する懸念</SelectItem>
                     <SelectItem value="dangerous">見学に危険がある</SelectItem>
                     <SelectItem value="wrong_info">内容が間違っている</SelectItem>
                     <SelectItem value="duplicate">同じピンが重複している</SelectItem>

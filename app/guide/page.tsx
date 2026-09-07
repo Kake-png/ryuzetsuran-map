@@ -49,6 +49,8 @@ const smallPlants = [
     name: "ハオルチア",
     latin: "Haworthia / Haworthiopsis",
     icon: Leaf,
+    imageSrc: "/haworthia-botanical.svg",
+    imageAlt: "小さな鉢に植えたハオルチアの植物画",
     lead: "丸みや透明感のある葉を、小さな鉢で眺めたい人向け。アガベとは別の仲間ですが、室内で始めやすい選択肢です。",
     facts: [
       ["大きさ", "多くは小鉢で管理しやすい"],
@@ -60,6 +62,8 @@ const smallPlants = [
     name: "アガベ・笹の雪",
     latin: "Agave victoriae-reginae",
     icon: Sprout,
+    imageSrc: "/sasano-yuki-botanical.svg",
+    imageAlt: "白い模様のあるアガベ・笹の雪の植物画",
     lead: "整った白い模様が人気の小型アガベ。大型種より鉢で管理しやすく、リュウゼツランらしい姿も楽しめます。葉先は鋭いため置き場には注意が必要です。",
     facts: [
       ["大きさ", "多くのアガベより小型で鉢管理しやすい"],
@@ -133,7 +137,7 @@ export default function GuidePage() {
         <header className="guide-part-heading">
           <div>
             <p className="plate-number">PART II · SMALL SUCCULENTS</p>
-            <h2>小さな鉢から始める</h2>
+            <h2>あなたも育ててみませんか？</h2>
           </div>
           <p>
             アオノリュウゼツランを家で再現しようとすると、株幅や鋭い葉先への備えが必要です。
@@ -144,6 +148,7 @@ export default function GuidePage() {
         <div className="small-plant-grid">
           {smallPlants.map((plant) => (
             <article className="small-plant-card" key={plant.name}>
+              <img className="small-plant-image" src={plant.imageSrc} alt={plant.imageAlt} width={640} height={420} />
               <header>
                 <plant.icon aria-hidden="true" />
                 <div><h3>{plant.name}</h3><p><i>{plant.latin}</i></p></div>
@@ -169,15 +174,12 @@ export default function GuidePage() {
 
       <section className="guide-commerce-note" aria-labelledby="commerce-heading">
         <div>
-          <p className="plate-number">TOOLS &amp; SITE POLICY</p>
-          <h2 id="commerce-heading">小さく始める道具</h2>
+          <p className="plate-number">NEXT NOTE</p>
+          <h2 id="commerce-heading">育てる道具も紹介予定</h2>
         </div>
         <div className="commerce-copy">
           <p>
-            今後は小鉢、排水性のよい用土、記録用ラベル、室内用ライトなどを、この育成帖の内容に必要な範囲で紹介します。紹介料が入るリンクには、広告・アフィリエイトであることを明記します。
-          </p>
-          <p>
-            地図画面には広告を置きません。協賛や広告の有無によって、地点の掲載順位、植物の状態判定、修正・削除対応を変えることもありません。
+            今後は、小鉢や排水性のよい用土など、育成帖の内容に必要な道具を紹介していく予定です。
           </p>
         </div>
       </section>

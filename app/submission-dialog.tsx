@@ -240,7 +240,7 @@ export function SubmissionDialog({
               <p className="dialog-kicker">NEW SIGHTING</p>
               <DialogTitle>アオノリュウゼツランを投稿</DialogTitle>
               <DialogDescription>
-                正確な位置を公開します。私有地は所有者本人、または明示的な掲載許可を得た場合だけ投稿できます。
+                正確な位置を公開します。公道・公開エリアから確認できる株を投稿できます。私有地内には立ち入らないでください。
               </DialogDescription>
             </DialogHeader>
 
@@ -345,13 +345,13 @@ export function SubmissionDialog({
               <div className="declaration-items">
                 <label>
                   <Checkbox checked={permissionConfirmed} onCheckedChange={(value) => setPermissionConfirmed(value === true)} />
-                  <span>公共・来訪可能な場所です。私有地の場合は、私が所有者・管理者本人であるか、正確な位置の掲載許可を得ています。</span>
+                  <span>投稿場所へ無断で立ち入りません。私有地の株は、公道・公開エリアから確認した情報、または自分が管理する場所・掲載許可を得た場所の情報です。</span>
                 </label>
                 <label>
                   <Checkbox checked={rulesAccepted} onCheckedChange={(value) => setRulesAccepted(value === true)} />
                   <span>写真は自分が撮影したもの、または掲載権限のあるものです。無関係な人、表札、車両ナンバーなどを含めず、見学者に立入許可を与える投稿ではないことを確認しました。</span>
                 </label>
-                <p>許可の真正性を運営が事前確認するものではありません。無許可掲載・安全上の申告があったピンは、確認まで全体を非公開にします。</p>
+                <p>掲載許可や要請者の真正性を運営が事前確認するものではありません。私有地・生活への影響や安全に関する申告があったピンは、安全を優先して一時非公開にします。</p>
               </div>
             </div>
 

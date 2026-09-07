@@ -39,16 +39,6 @@ const submissionSchema = z
     website: z.string().max(0),
   })
   .superRefine((value, context) => {
-    if (
-      value.locationType === "private_authorized" &&
-      !["owner", "authorized"].includes(value.submitterRelation)
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["submitterRelation"],
-        message: "私有地は所有者本人または掲載許可を得た方のみ投稿できます。",
-      });
-    }
     const observation = Date.parse(`${value.observedAt}T00:00:00Z`);
     if (observation > Date.now() + 86_400_000) {
       context.addIssue({
