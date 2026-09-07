@@ -2450,6 +2450,7 @@ body {
 .small-plant-image {
   display: block;
   width: calc(100% + 56px);
+  max-width: none;
   height: auto;
   aspect-ratio: 3 / 2;
   margin: -28px -28px 24px;
