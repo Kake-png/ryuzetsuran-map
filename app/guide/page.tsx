@@ -49,7 +49,7 @@ const smallPlants = [
     name: "ハオルチア",
     latin: "Haworthia / Haworthiopsis",
     icon: Leaf,
-    imageSrc: "/haworthia-botanical.svg",
+    imageSrc: "/haworthia-botanical-v2.webp",
     imageAlt: "小さな鉢に植えたハオルチアの植物画",
     lead: "丸みや透明感のある葉を、小さな鉢で眺めたい人向け。アガベとは別の仲間ですが、室内で始めやすい選択肢です。",
     facts: [
@@ -62,7 +62,7 @@ const smallPlants = [
     name: "アガベ・笹の雪",
     latin: "Agave victoriae-reginae",
     icon: Sprout,
-    imageSrc: "/sasano-yuki-botanical.svg",
+    imageSrc: "/sasano-yuki-botanical-v2.webp",
     imageAlt: "白い模様のあるアガベ・笹の雪の植物画",
     lead: "整った白い模様が人気の小型アガベ。大型種より鉢で管理しやすく、リュウゼツランらしい姿も楽しめます。葉先は鋭いため置き場には注意が必要です。",
     facts: [
