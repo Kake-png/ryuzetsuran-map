@@ -19,6 +19,16 @@
 - secret: `RATE_LIMIT_SALT`（十分に長いランダム値）
 - optional secret: `MODERATION_WEBHOOK_URL`
 
+## 運営用管理キー
+
+`/admin` の管理キーは、Cloudflare のシークレット `ADMIN_TOKEN` に保存します。値そのものはGit、README、`.env`、`.openai/hosting.json`へ書き込みません。
+
+- 新しいキーは `openssl rand -base64 32` などで生成する。
+- 生成した値はパスワードマネージャーへ保存し、登録後に一度取り出せることを確認する。
+- 管理画面はキーをこのタブの `sessionStorage` にだけ保持する。タブを閉じた後は再入力する。
+- キーを紛失した場合は復元せず、Cloudflare の `ADMIN_TOKEN` を新しい値へ差し替えて再デプロイする。差し替え後、古いキーは無効になる。
+- 管理キーをチャット、メール、スクリーンショット、Gitのコミットへ残さない。
+
 ## Prerequisites
 
 - Node.js `>=22.13.0`

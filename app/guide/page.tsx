@@ -2,20 +2,21 @@ import type { Metadata } from "next";
 import {
   ArrowLeft,
   Camera,
+  Leaf,
   MapPinned,
   NotebookPen,
   ShieldCheck,
+  Snowflake,
   Sprout,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 
 export const metadata: Metadata = {
-  title: "観察・育成帖 | リュウゼツランマップ",
-  description: "アオノリュウゼツランを安全に観察し、記録し、育てるための小さな案内。",
+  title: "観察帖と小さな多肉植物入門 | リュウゼツランマップ",
+  description: "アオノリュウゼツランを安全に観察する方法と、小さな鉢で楽しめる多肉植物の入門案内。",
 };
 
-const chapters = [
+const fieldChapters = [
   {
     id: "observe",
     number: "01",
@@ -37,35 +38,34 @@ const chapters = [
     icon: NotebookPen,
     text: "同じ株を継続して記録すると、花茎が伸びる速さや開花後の変化が見えてきます。見た事実と推測を分けるのが、後から役立つ記録のこつです。",
     points: [
-      "観察日、状態、株数、変化した点を残す",
-      "前回の記録と同じ構図の写真を一枚撮る",
-      "投稿時に発行された管理キーは手元に保管する",
+      "観察日、状態、株数、前回から変わった点を残す",
+      "全体像と変化した部分を、同じ構図で一枚ずつ撮る",
+      "人物、表札、車両ナンバーが写っていないか確認する",
+    ],
+  },
+];
+
+const smallPlants = [
+  {
+    name: "ハオルチア",
+    latin: "Haworthia / Haworthiopsis",
+    icon: Leaf,
+    lead: "丸みや透明感のある葉を、小さな鉢で眺めたい人向け。アガベとは別の仲間ですが、室内で始めやすい選択肢です。",
+    facts: [
+      ["大きさ", "多くは小鉢で管理しやすい"],
+      ["置き場", "明るい日陰や室内の窓辺"],
+      ["寒さ", "強い霜や凍結を避けて室内へ"],
     ],
   },
   {
-    id: "grow",
-    number: "03",
-    label: "CULTIVATION",
-    title: "育てる",
-    icon: Sprout,
-    text: "アオノリュウゼツランは大きく育つため、将来の株幅と葉先の鋭さまで考えて置き場所を選びます。野外の株から子株や葉を持ち帰らず、流通している株を選んでください。",
-    points: [
-      "水はけのよい用土と、倒れにくい鉢を選ぶ",
-      "人が通る場所から離し、葉先によるけがを防ぐ",
-      "地域の気候に合わせ、寒さと過湿への対策をする",
-    ],
-  },
-  {
-    id: "photograph",
-    number: "04",
-    label: "PHOTOGRAPHY",
-    title: "撮影する",
-    icon: Camera,
-    text: "写真は状態確認の大切な資料です。一方で、背景に人、表札、車両ナンバーや住居の様子が写ると、植物以外の情報まで公開してしまいます。",
-    points: [
-      "全体像と、変化が分かる部分を一枚ずつ撮る",
-      "人物や生活情報が写っていないか送信前に確認する",
-      "危険な位置取りや、撮影のための立ち入りをしない",
+    name: "センペルビウム",
+    latin: "Sempervivum",
+    icon: Snowflake,
+    lead: "小ささに加えて寒さへの強さを優先するならこちら。屋外で育てやすい一方、日本の高温多湿な夏には風通しが必要です。",
+    facts: [
+      ["大きさ", "小さなロゼットが子株で増える"],
+      ["置き場", "日当たりと風通しのよい屋外"],
+      ["寒さ", "比較的強い。過湿と夏の蒸れに注意"],
     ],
   },
 ];
@@ -78,10 +78,10 @@ export default function GuidePage() {
         <p>RYUZETSURAN FIELD ATLAS · NOTE 01</p>
       </header>
 
-      <section className="guide-hero">
+      <section className="guide-hero" id="americana">
         <div className="guide-hero-copy">
-          <p className="plate-number">SPECIES 01</p>
-          <h1>アオノリュウゼツラン<br />観察・育成帖</h1>
+          <p className="plate-number">PART I · SPECIES 01</p>
+          <h1>アオノリュウゼツラン<br />観察帖</h1>
           <p className="latin-name"><i>Agave americana</i></p>
           <p className="guide-lead">
             長い年月をかけて育ち、やがて高い花茎を伸ばすアオノリュウゼツラン。
@@ -94,27 +94,25 @@ export default function GuidePage() {
           </dl>
         </div>
         <figure className="botanical-plate">
-          <Image
+          <img
             src="/agave-botanical-plate.webp"
             alt="花茎を伸ばしたアオノリュウゼツランをもとにした植物画"
             width={768}
             height={1152}
-            priority
           />
           <figcaption>装飾用植物画／アオノリュウゼツランをもとにした図</figcaption>
         </figure>
       </section>
 
       <nav className="guide-index" aria-label="観察・育成帖の目次">
-        {chapters.map((chapter) => (
-          <a href={`#${chapter.id}`} key={chapter.id}>
-            <span>{chapter.number}</span>{chapter.title}
-          </a>
-        ))}
+        <a href="#americana"><span>I</span>アオノリュウゼツラン</a>
+        <a href="#observe"><span>01</span>観察する</a>
+        <a href="#record"><span>02</span>記録する</a>
+        <a href="#small-plants"><span>II</span>小さな多肉植物</a>
       </nav>
 
       <article className="guide-chapters">
-        {chapters.map((chapter) => (
+        {fieldChapters.map((chapter) => (
           <section id={chapter.id} className="guide-chapter" key={chapter.id}>
             <header>
               <span className="chapter-number">{chapter.number}</span>
@@ -132,14 +130,52 @@ export default function GuidePage() {
         ))}
       </article>
 
+      <section className="small-plant-section" id="small-plants">
+        <header className="guide-part-heading">
+          <div>
+            <p className="plate-number">PART II · SMALL SUCCULENTS</p>
+            <h2>小さな鉢から始める</h2>
+          </div>
+          <p>
+            アオノリュウゼツランを家で再現しようとすると、株幅や鋭い葉先への備えが必要です。
+            ここでは、鉢から大きく張り出しにくい植物を入り口にします。
+          </p>
+        </header>
+
+        <div className="small-plant-grid">
+          {smallPlants.map((plant) => (
+            <article className="small-plant-card" key={plant.name}>
+              <header>
+                <plant.icon aria-hidden="true" />
+                <div><h3>{plant.name}</h3><p><i>{plant.latin}</i></p></div>
+              </header>
+              <p>{plant.lead}</p>
+              <dl>
+                {plant.facts.map(([label, value]) => (
+                  <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+                ))}
+              </dl>
+            </article>
+          ))}
+        </div>
+
+        <aside className="plant-choice-note">
+          <Sprout aria-hidden="true" />
+          <div>
+            <h3>どちらを選ぶ？</h3>
+            <p>丸い姿と室内での眺めやすさならハオルチア、寒さと屋外管理を優先するならセンペルビウム。小さい植物でも、品種・地域・置き場によって育ち方は変わります。</p>
+          </div>
+        </aside>
+      </section>
+
       <section className="guide-commerce-note" aria-labelledby="commerce-heading">
         <div>
-          <p className="plate-number">SITE POLICY</p>
-          <h2 id="commerce-heading">道具の紹介と広告について</h2>
+          <p className="plate-number">TOOLS &amp; SITE POLICY</p>
+          <h2 id="commerce-heading">小さく始める道具</h2>
         </div>
         <div className="commerce-copy">
           <p>
-            今後、この観察帖で鉢・用土・書籍・撮影用品などを紹介し、リンク先で購入された場合に運営へ紹介料が入ることがあります。その場合は、対象のリンク付近に広告・アフィリエイトであることを明記します。
+            今後は小鉢、排水性のよい用土、記録用ラベル、室内用ライトなどを、この育成帖の内容に必要な範囲で紹介します。紹介料が入るリンクには、広告・アフィリエイトであることを明記します。
           </p>
           <p>
             地図画面には広告を置きません。協賛や広告の有無によって、地点の掲載順位、植物の状態判定、修正・削除対応を変えることもありません。
@@ -152,7 +188,7 @@ export default function GuidePage() {
           <ShieldCheck aria-hidden="true" />
           <p>観察は、植物より先に周囲の安全と暮らしを確認してから。</p>
         </div>
-        <Link href="/">地図で探す</Link>
+        <Link href="/"><Camera aria-hidden="true" />地図で探す</Link>
       </footer>
     </main>
   );
