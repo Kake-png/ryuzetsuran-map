@@ -11,6 +11,7 @@ import {
   BookOpenText,
   CalendarDays,
   ChevronRight,
+  ExternalLink,
   Flower2,
   History,
   ImageOff,
@@ -26,12 +27,20 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Toaster } from "@/components/ui/sonner";
 import {
   BLOOM_STATUSES,
   LOCATION_TYPES,
   type AgavePin,
   type BloomStatus,
+  type PhotoAttribution,
 } from "@/lib/agave";
 
 import { ChangeRequestDialog } from "./request-dialog";
@@ -40,6 +49,12 @@ import { SafetyDialog } from "./safety-dialog";
 import { SubmissionDialog } from "./submission-dialog";
 
 type Filter = "blooming" | "changing" | "all";
+
+type OpenedPhoto = {
+  url: string;
+  alt: string;
+  attribution: PhotoAttribution | null;
+};
 
 function ageInDays(date: string) {
   return Math.max(
@@ -85,6 +100,7 @@ export function MapApp() {
   const [requestOpen, setRequestOpen] = useState(false);
   const [observationOpen, setObservationOpen] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
+  const [openedPhoto, setOpenedPhoto] = useState<OpenedPhoto | null>(null);
   const [pickingLocation, setPickingLocation] = useState(false);
   const [pickedLocation, setPickedLocation] = useState<{
     latitude: number;
@@ -172,7 +188,7 @@ export function MapApp() {
   const selectedHistory = selected
     ? selected.observations.length
       ? selected.observations
-      : [{ id: `${selected.id}-initial`, status: selected.status, observedAt: selected.observedAt, description: selected.description, photoUrl: selected.photoUrl, photoAlt: selected.photoAlt, verifiedSubmitter: true }]
+      : [{ id: `${selected.id}-initial`, status: selected.status, observedAt: selected.observedAt, description: selected.description, photoUrl: selected.photoUrl, photoAlt: selected.photoAlt, photoAttribution: selected.photoAttribution, verifiedSubmitter: true }]
     : [];
 
   useEffect(() => {
@@ -239,6 +255,14 @@ export function MapApp() {
   function beginLocationPick() {
     setSubmissionOpen(false);
     setPickingLocation(true);
+  }
+
+  function openPhoto(url: string, alt: string | null, attribution: PhotoAttribution | null) {
+    setOpenedPhoto({
+      url,
+      alt: alt || "投稿写真",
+      attribution,
+    });
   }
 
   return (
@@ -339,11 +363,18 @@ export function MapApp() {
                 </div>
 
                 {selected.photoUrl ? (
-                  <img
-                    className="pin-photo"
-                    src={selected.photoUrl}
-                    alt={selected.photoAlt || `${selected.title}の投稿写真`}
-                  />
+                  <button
+                    type="button"
+                    className="pin-photo-button"
+                    onClick={() => openPhoto(selected.photoUrl as string, selected.photoAlt, selected.photoAttribution)}
+                    aria-label="写真を開く"
+                  >
+                    <img
+                      className="pin-photo"
+                      src={selected.photoUrl}
+                      alt={selected.photoAlt || `${selected.title}の投稿写真`}
+                    />
+                  </button>
                 ) : (
                   <div className="photo-placeholder">
                     <ImageOff aria-hidden="true" />
@@ -379,7 +410,16 @@ export function MapApp() {
                     <li key={observation.id}>
                       <div>
                         <div className="history-topline"><StatusLabel status={observation.status} /><time>{formatDate(observation.observedAt)}</time></div>
-                        {observation.photoUrl && <img src={observation.photoUrl} alt={observation.photoAlt || "観察時の写真"} />}
+                        {observation.photoUrl && (
+                          <button
+                            type="button"
+                            className="history-photo-button"
+                            onClick={() => openPhoto(observation.photoUrl as string, observation.photoAlt, observation.photoAttribution)}
+                            aria-label="観察写真を開く"
+                          >
+                            <img src={observation.photoUrl} alt={observation.photoAlt || "観察時の写真"} />
+                          </button>
+                        )}
                         {observation.description && <p>{observation.description}</p>}
                       </div>
                     </li>
@@ -499,6 +539,41 @@ export function MapApp() {
       />
       <ObservationDialog open={observationOpen} onOpenChange={setObservationOpen} pin={selected?.demo ? null : selected} onPublished={loadPins} />
       <SafetyDialog open={safetyOpen} onOpenChange={setSafetyOpen} />
+      <Dialog open={Boolean(openedPhoto)} onOpenChange={(open) => { if (!open) setOpenedPhoto(null); }}>
+        <DialogContent className="photo-dialog sm:max-w-3xl">
+          {openedPhoto && (
+            <>
+              <DialogHeader className="sr-only">
+                <DialogTitle>投稿写真</DialogTitle>
+                <DialogDescription>写真の権利情報</DialogDescription>
+              </DialogHeader>
+              <img className="photo-dialog-image" src={openedPhoto.url} alt={openedPhoto.alt} />
+              {openedPhoto.attribution ? (
+                <div className="photo-attribution">
+                  <p>写真：{openedPhoto.attribution.author} · {openedPhoto.attribution.license}</p>
+                  <details>
+                    <summary>写真情報</summary>
+                    <dl>
+                      <div>
+                        <dt>原典</dt>
+                        <dd>{openedPhoto.attribution.sourceUrl ? <a href={openedPhoto.attribution.sourceUrl} target="_blank" rel="noreferrer">掲載元を開く <ExternalLink aria-hidden="true" /></a> : "記録なし"}</dd>
+                      </div>
+                      <div>
+                        <dt>ライセンス</dt>
+                        <dd>{openedPhoto.attribution.licenseUrl ? <a href={openedPhoto.attribution.licenseUrl} target="_blank" rel="noreferrer">{openedPhoto.attribution.license} <ExternalLink aria-hidden="true" /></a> : openedPhoto.attribution.license}</dd>
+                      </div>
+                      <div>
+                        <dt>加工</dt>
+                        <dd>{openedPhoto.attribution.changes || "原図をそのまま掲載"}</dd>
+                      </div>
+                    </dl>
+                  </details>
+                </div>
+              ) : <p className="photo-submission-label">投稿写真</p>}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
       <Toaster position="top-center" richColors />
     </main>
   );

@@ -350,7 +350,7 @@ a:focus-visible {
   box-shadow: 0 2px 8px rgb(32 62 60 / 5%);
 }
 
-.selected-card > :not(.pin-photo, .photo-placeholder) {
+.selected-card > :not(.pin-photo-button, .photo-placeholder) {
   margin-right: 17px;
   margin-left: 17px;
 }
@@ -433,6 +433,23 @@ a:focus-visible {
 .pin-photo {
   display: block;
   object-fit: cover;
+}
+
+.pin-photo-button,
+.history-photo-button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: zoom-in;
+}
+
+.pin-photo-button:focus-visible,
+.history-photo-button:focus-visible {
+  outline: 3px solid #2e6863;
+  outline-offset: -3px;
 }
 
 .photo-placeholder {
@@ -572,6 +589,79 @@ a:focus-visible {
   margin-top: 9px;
   border-radius: 3px;
   object-fit: cover;
+}
+
+.photo-dialog {
+  max-height: min(88vh, 860px);
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.photo-dialog-image {
+  display: block;
+  width: 100%;
+  max-height: min(68vh, 680px);
+  border-radius: 3px;
+  object-fit: contain;
+}
+
+.photo-attribution,
+.photo-submission-label {
+  margin: 0;
+  padding: 0 4px 2px;
+  color: #4d5c59;
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.photo-attribution p {
+  margin: 0;
+}
+
+.photo-attribution details {
+  margin-top: 6px;
+}
+
+.photo-attribution summary {
+  width: fit-content;
+  color: #2e6863;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.photo-attribution dl {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  border-top: 1px solid #dce4df;
+  padding-top: 8px;
+}
+
+.photo-attribution dl > div {
+  display: grid;
+  grid-template-columns: 5em 1fr;
+  gap: 8px;
+}
+
+.photo-attribution dt {
+  color: #75827f;
+}
+
+.photo-attribution dd {
+  margin: 0;
+}
+
+.photo-attribution a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #1f605d;
+  text-underline-offset: 2px;
+}
+
+.photo-attribution a svg {
+  width: 12px;
+  height: 12px;
 }
 
 .observation-list p {

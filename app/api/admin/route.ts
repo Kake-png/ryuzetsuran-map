@@ -169,7 +169,8 @@ export async function POST(request: Request) {
       }
       if (parsed.data.action === "undo_latest_observation") {
         const observations = await db.prepare(
-          `SELECT public_id, bloom_status, observed_at, description, photo_key, photo_alt
+          `SELECT public_id, bloom_status, observed_at, description, photo_key, photo_alt,
+                  photo_author, photo_license, photo_license_url, photo_source_url, photo_changes
            FROM observations
            WHERE agave_public_id = ? AND visibility = 'approved'
            ORDER BY observed_at DESC, created_at DESC
@@ -181,9 +182,23 @@ export async function POST(request: Request) {
           db.prepare("UPDATE observations SET visibility = 'hidden' WHERE public_id = ?").bind(latest.public_id),
           db.prepare(
             `UPDATE agaves SET bloom_status = ?, observed_at = ?, description = ?,
-               photo_key = ?, photo_alt = ?, updated_at = CURRENT_TIMESTAMP
+               photo_key = ?, photo_alt = ?, photo_author = ?, photo_license = ?,
+               photo_license_url = ?, photo_source_url = ?, photo_changes = ?,
+               updated_at = CURRENT_TIMESTAMP
              WHERE public_id = ?`,
-          ).bind(previous.bloom_status, previous.observed_at, previous.description, previous.photo_key, previous.photo_alt, parsed.data.pinId),
+          ).bind(
+            previous.bloom_status,
+            previous.observed_at,
+            previous.description,
+            previous.photo_key,
+            previous.photo_alt,
+            previous.photo_author,
+            previous.photo_license,
+            previous.photo_license_url,
+            previous.photo_source_url,
+            previous.photo_changes,
+            parsed.data.pinId,
+          ),
         ]);
         return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
       }
