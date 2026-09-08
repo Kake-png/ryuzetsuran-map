@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { DEMO_PINS, type PhotoAttribution } from "@/lib/agave";
-import { sanitizeWebp } from "@/lib/photo-security";
+import { sanitizeUploadedPhoto } from "@/lib/photo-security";
 import {
   assertHumanTiming,
   assertSameOrigin,
@@ -259,14 +259,14 @@ export async function POST(request: Request) {
 
     if (photo && typeof photo !== "string" && photo.size > 0) {
       if (!bucket) throw new HttpError(503, "写真の保存機能を一時的に利用できません。");
-      if (photo.type !== "image/webp" || photo.size > 3_000_000) {
-        throw new HttpError(400, "写真は変換後3MB以下のWebP画像にしてください。");
+      if (!["image/webp", "image/jpeg"].includes(photo.type) || photo.size > 3_000_000) {
+        throw new HttpError(400, "写真は変換後3MB以下のWebPまたはJPEG画像にしてください。");
       }
-      const bytes = sanitizeWebp(new Uint8Array(await photo.arrayBuffer()));
+      const sanitized = sanitizeUploadedPhoto(new Uint8Array(await photo.arrayBuffer()), photo.type);
 
-      uploadedKey = `agaves/${id}/${randomToken(18)}.webp`;
-      await bucket.put(uploadedKey, bytes, {
-        httpMetadata: { contentType: "image/webp" },
+      uploadedKey = `agaves/${id}/${randomToken(18)}.${sanitized.extension}`;
+      await bucket.put(uploadedKey, sanitized.bytes, {
+        httpMetadata: { contentType: sanitized.contentType },
         customMetadata: { pinId },
       });
     }

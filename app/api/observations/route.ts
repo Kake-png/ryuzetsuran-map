@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { sanitizeWebp } from "@/lib/photo-security";
+import { sanitizeUploadedPhoto } from "@/lib/photo-security";
 import {
   assertHumanTiming,
   assertSameOrigin,
@@ -67,10 +67,10 @@ export async function POST(request: Request) {
     const observationId = publicCode("OBS");
     if (hasPhoto && photo && typeof photo !== "string") {
       if (!bucket) throw new HttpError(503, "写真の保存機能を一時的に利用できません。");
-      if (photo.type !== "image/webp" || photo.size > 3_000_000) throw new HttpError(400, "写真は変換後3MB以下のWebP画像にしてください。");
-      const bytes = sanitizeWebp(new Uint8Array(await photo.arrayBuffer()));
-      uploadedKey = `observations/${parsed.data.pinId}/${randomToken(18)}.webp`;
-      await bucket.put(uploadedKey, bytes, { httpMetadata: { contentType: "image/webp" }, customMetadata: { pinId: parsed.data.pinId, observationId } });
+      if (!["image/webp", "image/jpeg"].includes(photo.type) || photo.size > 3_000_000) throw new HttpError(400, "写真は変換後3MB以下のWebPまたはJPEG画像にしてください。");
+      const sanitized = sanitizeUploadedPhoto(new Uint8Array(await photo.arrayBuffer()), photo.type);
+      uploadedKey = `observations/${parsed.data.pinId}/${randomToken(18)}.${sanitized.extension}`;
+      await bucket.put(uploadedKey, sanitized.bytes, { httpMetadata: { contentType: sanitized.contentType }, customMetadata: { pinId: parsed.data.pinId, observationId } });
     }
 
     const value = parsed.data;

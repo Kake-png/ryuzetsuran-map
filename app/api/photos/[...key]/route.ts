@@ -7,7 +7,8 @@ export async function GET(
   try {
     const { key: parts } = await context.params;
     const key = parts.join("/");
-    if (!/^agaves\/[0-9a-f-]{36}\/[A-Za-z0-9_-]{20,40}\.webp$/.test(key)) {
+    const allowedKey = /^(?:agaves\/[0-9a-f-]{36}|observations\/AGV-[A-Z0-9_-]{6,20})\/[A-Za-z0-9_-]{20,40}\.(?:webp|jpg)$/.test(key);
+    if (!allowedKey) {
       throw new HttpError(404, "写真が見つかりません。");
     }
 
@@ -18,9 +19,10 @@ export async function GET(
       return new Response(null, { status: 304 });
     }
 
+    const contentType = key.endsWith(".jpg") ? "image/jpeg" : "image/webp";
     return new Response(object.body, {
       headers: {
-        "Content-Type": "image/webp",
+        "Content-Type": contentType,
         "Content-Length": String(object.size),
         ETag: object.httpEtag,
         "Cache-Control": "public, max-age=31536000, immutable",

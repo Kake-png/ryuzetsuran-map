@@ -124,7 +124,7 @@ export function ObservationDialog({
           </div>
           <div className="photo-upload">
             <div className="photo-upload-copy"><Camera /><div><strong>今回の写真</strong><p>管理キーがない方の更新には、現地で撮影した写真が必要です。</p></div></div>
-            <label className="photo-select-button"><Upload />{preparing ? "変換中…" : photo ? "写真を変更" : "写真を選ぶ"}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={selectPhoto} disabled={preparing} /></label>
+            <label className="photo-select-button"><Upload />{preparing ? "変換中…" : photo ? "写真を変更" : "写真を選ぶ"}<input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" onChange={selectPhoto} disabled={preparing} /></label>
             {photoPreview && <img src={photoPreview} alt="観察写真の送信前プレビュー" className="photo-preview" />}
             <label className="field-group"><span className="field-label">写真の説明</span><Input name="photoAlt" maxLength={160} placeholder="例：歩道側から見た株元と子株" /></label>
           </div>

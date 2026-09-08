@@ -68,3 +68,111 @@ export function sanitizeWebp(input: Uint8Array) {
   }
   return output;
 }
+
+function sanitizeJpeg(input: Uint8Array) {
+  if (input.length < 16 || input[0] !== 0xff || input[1] !== 0xd8) {
+    throw new HttpError(400, "写真ファイルを確認できませんでした。");
+  }
+
+  const retained: Uint8Array[] = [input.slice(0, 2)];
+  let offset = 2;
+  let dimensions: { width: number; height: number } | null = null;
+  let sawScan = false;
+  let sawEnd = false;
+  let segmentCount = 0;
+
+  while (offset < input.length) {
+    if (++segmentCount > 512 || input[offset] !== 0xff) {
+      throw new HttpError(400, "写真ファイルの構造が正しくありません。");
+    }
+
+    const markerStart = offset;
+    while (offset < input.length && input[offset] === 0xff) offset += 1;
+    if (offset >= input.length) throw new HttpError(400, "写真ファイルの構造が正しくありません。");
+    const marker = input[offset];
+    offset += 1;
+
+    if (marker === 0xd9) {
+      retained.push(Uint8Array.of(0xff, 0xd9));
+      sawEnd = true;
+      if (offset !== input.length) throw new HttpError(400, "写真ファイルの構造が正しくありません。");
+      break;
+    }
+    if (marker === 0xd8 || marker === 0x00 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      throw new HttpError(400, "写真ファイルの構造が正しくありません。");
+    }
+    if (offset + 2 > input.length) throw new HttpError(400, "写真ファイルの構造が正しくありません。");
+
+    const size = (input[offset] << 8) | input[offset + 1];
+    const segmentEnd = offset + size;
+    if (size < 2 || segmentEnd > input.length) throw new HttpError(400, "写真ファイルの構造が正しくありません。");
+
+    if (marker === 0xc0 || marker === 0xc2) {
+      if (size < 8) throw new HttpError(400, "写真ファイルの構造が正しくありません。");
+      const height = (input[offset + 3] << 8) | input[offset + 4];
+      const width = (input[offset + 5] << 8) | input[offset + 6];
+      const components = input[offset + 7];
+      if (![1, 3].includes(components)) throw new HttpError(400, "このJPEG画像の色形式には対応していません。");
+      if (dimensions && (dimensions.width !== width || dimensions.height !== height)) {
+        throw new HttpError(400, "写真ファイルの構造が正しくありません。");
+      }
+      dimensions = { width, height };
+    }
+
+    // APPnとコメントには撮影位置などが入り得るため除去する。
+    const metadata = (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe;
+    const supported = [0xc0, 0xc2, 0xc4, 0xda, 0xdb, 0xdd].includes(marker);
+    if (!metadata && !supported) throw new HttpError(400, "このJPEG画像の構造には対応していません。");
+    if (!metadata) retained.push(input.slice(markerStart, segmentEnd));
+    offset = segmentEnd;
+
+    if (marker === 0xda) {
+      sawScan = true;
+      const scanStart = offset;
+      let markerFound = false;
+      while (offset < input.length) {
+        if (input[offset] !== 0xff) {
+          offset += 1;
+          continue;
+        }
+        const nextMarkerStart = offset;
+        while (offset < input.length && input[offset] === 0xff) offset += 1;
+        if (offset >= input.length) break;
+        const next = input[offset];
+        if (next === 0x00 || (next >= 0xd0 && next <= 0xd7)) {
+          offset += 1;
+          continue;
+        }
+        retained.push(input.slice(scanStart, nextMarkerStart));
+        offset = nextMarkerStart;
+        markerFound = true;
+        break;
+      }
+      if (!markerFound) throw new HttpError(400, "写真ファイルの構造が正しくありません。");
+    }
+  }
+
+  if (!dimensions || !sawScan || !sawEnd) throw new HttpError(400, "写真ファイルを確認できませんでした。");
+  if (dimensions.width < 1 || dimensions.height < 1 || dimensions.width > 4_000 || dimensions.height > 4_000 || dimensions.width * dimensions.height > 16_000_000) {
+    throw new HttpError(400, "写真の縦横サイズが大きすぎます。");
+  }
+
+  const length = retained.reduce((sum, chunk) => sum + chunk.length, 0);
+  const output = new Uint8Array(length);
+  let writeOffset = 0;
+  for (const chunk of retained) {
+    output.set(chunk, writeOffset);
+    writeOffset += chunk.length;
+  }
+  return output;
+}
+
+export function sanitizeUploadedPhoto(input: Uint8Array, contentType: string) {
+  if (contentType === "image/webp") {
+    return { bytes: sanitizeWebp(input), contentType: "image/webp" as const, extension: "webp" as const };
+  }
+  if (contentType === "image/jpeg") {
+    return { bytes: sanitizeJpeg(input), contentType: "image/jpeg" as const, extension: "jpg" as const };
+  }
+  throw new HttpError(400, "写真の変換形式を確認できませんでした。");
+}
