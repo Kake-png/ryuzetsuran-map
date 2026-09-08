@@ -49,7 +49,7 @@ const worker = {
     headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
     headers.set(
       "Content-Security-Policy",
-      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org https://hbb.afl.rakuten.co.jp https://thumbnail.image.rakuten.co.jp https://image.rakuten.co.jp; connect-src 'self' https://tiles.openfreemap.org; font-src 'self' data: https://tiles.openfreemap.org; worker-src 'self' blob:",
+      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org https://hbb.afl.rakuten.co.jp https://thumbnail.image.rakuten.co.jp https://image.rakuten.co.jp https://www.google-analytics.com; connect-src 'self' https://tiles.openfreemap.org https://www.google-analytics.com https://region1.google-analytics.com; font-src 'self' data: https://tiles.openfreemap.org; worker-src 'self' blob:",
     );
     return new Response(response.body, {
       status: response.status,
