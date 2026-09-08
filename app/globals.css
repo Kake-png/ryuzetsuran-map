@@ -1233,6 +1233,7 @@ a:focus-visible {
 .access-note {
   display: flex;
   gap: 9px;
+  margin-top: 20px;
   border-radius: 10px;
   background: #edf5f2;
   padding: 11px;
@@ -2707,8 +2708,20 @@ body {
 
 .access-note {
   border-radius: 0;
-  background: #29483f;
-  color: #f5f1e7;
+  background: #e8eee5;
+  color: #2d5148;
+}
+
+.access-note svg {
+  color: #4d7967;
+}
+
+.access-note strong {
+  color: #2d5148;
+}
+
+.access-note p {
+  color: #53665d;
 }
 
 .selected-footer {
