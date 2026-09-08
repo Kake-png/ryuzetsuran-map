@@ -1,9 +1,4 @@
 import type { Metadata } from "next";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-
-import { SiteFooter } from "@/app/site-footer";
-
 export const metadata: Metadata = {
   title: "プライバシーポリシー",
   description: "リュウゼツランマップにおける情報の取り扱い。",
@@ -12,10 +7,6 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <main className="legal-shell">
-      <header className="spot-masthead">
-        <Link href="/"><ArrowLeft aria-hidden="true" />地図へ戻る</Link>
-        <span>PRIVACY</span>
-      </header>
       <article className="legal-page">
         <header><p>RYUZETSURAN MAP · PRIVACY</p><h1>プライバシーポリシー</h1><time dateTime="2026-09-08">制定：2026年9月8日</time></header>
         <section><h2>取得する情報</h2><p>投稿では、地点、観察日、状態、説明、写真、投稿者が選んだ場所区分を受け取ります。修正・削除依頼では、依頼内容と、任意で連絡先メールアドレスを受け取ります。投稿・依頼の不正利用防止のため、送信元情報から復元できない形式の識別子を作成し、回数制限に利用します。</p></section>
@@ -25,7 +16,6 @@ export default function PrivacyPage() {
         <section><h2>第三者提供</h2><p>法令にもとづく場合を除き、個人を特定できる連絡先情報を販売・貸与・目的外利用しません。投稿した地点・文章・写真は、地図と観察履歴として公開されることがあります。</p></section>
         <section><h2>お問い合わせ</h2><p>掲載済み地点・写真に関する削除または修正は、地図上の「修正・削除を依頼」から受け付けます。</p></section>
       </article>
-      <SiteFooter />
     </main>
   );
 }

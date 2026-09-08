@@ -7,6 +7,19 @@
   scrollbar-width: thin;
 }
 
+.site-frame {
+  display: flex;
+  height: 100dvh;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.site-page-content {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
 /* Small public footer */
 .site-mini-footer {
   display: flex;
@@ -621,7 +634,7 @@ a:focus-visible {
 
 .app-shell {
   display: flex;
-  height: 100dvh;
+  height: 100%;
   flex-direction: column;
   overflow: hidden;
   background: #eff4f1;
@@ -653,6 +666,8 @@ a:focus-visible {
 
 .brand-lockup {
   gap: 12px;
+  color: inherit;
+  text-decoration: none;
 }
 
 .brand-mark {
@@ -686,11 +701,39 @@ a:focus-visible {
   color: #8fc6bd;
 }
 
-.site-header h1 {
+.site-header h1,
+.site-header strong {
   margin: 0;
   font-size: 1.18rem;
   font-weight: 760;
   letter-spacing: 0.02em;
+}
+
+.brand-lockup > span:last-child,
+.brand-kicker {
+  display: block;
+}
+
+.header-map-link {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  color: #f5f1e7;
+  font-size: 0.84rem;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.header-map-link:hover {
+  background: rgb(255 255 255 / 8%);
+}
+
+.header-map-link svg {
+  width: 17px;
+  height: 17px;
 }
 
 .header-actions {
@@ -1239,6 +1282,8 @@ a:focus-visible {
   font-size: 0.72rem;
   font-weight: 700;
   text-decoration: none;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
 .spot-page-link:hover {
@@ -2189,7 +2234,8 @@ a:focus-visible {
     display: none;
   }
 
-  .site-header h1 {
+  .site-header h1,
+  .site-header strong {
     font-size: 0.94rem;
   }
 
@@ -2352,6 +2398,24 @@ a:focus-visible {
   }
 }
 
+.site-page-content .spot-shell,
+.site-page-content .support-shell,
+.site-page-content .guide-shell,
+.site-page-content .grow-shell,
+.site-page-content .legal-shell,
+.site-page-content .admin-shell {
+  min-height: 100%;
+}
+
+.site-page-content .spot-record,
+.site-page-content .spot-unavailable,
+.site-page-content .support-note,
+.site-page-content .guide-hero,
+.site-page-content .grow-page,
+.site-page-content .legal-page {
+  margin-top: 24px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2404,6 +2468,7 @@ body {
 }
 
 .site-header h1,
+.site-header strong,
 .sidebar-controls h2,
 .selected-card h2,
 .list-heading h3,
@@ -2466,7 +2531,8 @@ body {
   letter-spacing: 0.14em;
 }
 
-.site-header h1 {
+.site-header h1,
+.site-header strong {
   font-weight: 650;
   letter-spacing: 0.05em;
 }
@@ -3507,6 +3573,12 @@ body {
   object-fit: cover;
 }
 
+.admin-observation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
 /* Product guide and legal pages */
 .grow-shell,
 .legal-shell {
@@ -3521,7 +3593,7 @@ body {
 .grow-page,
 .legal-page {
   width: min(980px, calc(100% - 40px));
-  margin: 0 auto 42px;
+  margin: 24px auto 42px;
   background: var(--paper);
   box-shadow: 8px 8px 0 #c8bfa9;
 }
@@ -3721,27 +3793,18 @@ body {
 }
 
 @media (max-width: 840px) {
-  .app-shell {
-    padding-bottom: 46px;
-  }
-
-  .app-shell > .site-mini-footer {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 40;
+  .site-frame > .site-mini-footer {
     min-height: 46px;
     overflow-x: auto;
     justify-content: flex-start;
     white-space: nowrap;
   }
 
-  .app-shell > .site-mini-footer > span {
+  .site-frame > .site-mini-footer > span {
     display: none;
   }
 
-  .app-shell > .site-mini-footer nav {
+  .site-frame > .site-mini-footer nav {
     margin: 0 auto;
   }
 

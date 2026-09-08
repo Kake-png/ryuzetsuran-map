@@ -43,6 +43,11 @@ const actionSchema = z.discriminatedUnion("action", [
     pinId: z.string().trim(),
     observationId: z.string().trim(),
   }),
+  z.object({
+    action: z.literal("delete_observation"),
+    pinId: z.string().trim(),
+    observationId: z.string().trim(),
+  }),
 ]);
 
 const filterSchema = z.object({
@@ -278,6 +283,35 @@ export async function POST(request: Request) {
       ).run();
       if (!updated.meta.changes) throw new HttpError(404, "対象の観察記録が見つかりません。");
       await syncPinFromLatestObservation(db, parsed.data.pinId);
+    } else if (parsed.data.action === "delete_observation") {
+      const observation = await db.prepare(
+        `SELECT photo_key, visibility,
+                (SELECT COUNT(*) FROM observations
+                 WHERE agave_public_id = ? AND visibility = 'approved' AND public_id <> ?) AS remaining_approved
+         FROM observations
+         WHERE public_id = ? AND agave_public_id = ? LIMIT 1`,
+      ).bind(
+        parsed.data.pinId,
+        parsed.data.observationId,
+        parsed.data.observationId,
+        parsed.data.pinId,
+      ).first<{ photo_key: string | null; visibility: string; remaining_approved: number }>();
+      if (!observation) throw new HttpError(404, "対象の観察記録が見つかりません。");
+      if (observation.visibility === "approved" && observation.remaining_approved < 1) {
+        throw new HttpError(400, "唯一の公開観察記録は削除できません。地点自体の完全削除を利用してください。");
+      }
+      const deleted = await db.prepare(
+        "DELETE FROM observations WHERE public_id = ? AND agave_public_id = ?",
+      ).bind(parsed.data.observationId, parsed.data.pinId).run();
+      if (!deleted.meta.changes) throw new HttpError(404, "対象の観察記録が見つかりません。");
+      await syncPinFromLatestObservation(db, parsed.data.pinId);
+      if (observation.photo_key) {
+        try {
+          await runtimeEnv().BUCKET?.delete(observation.photo_key);
+        } catch (cleanupError) {
+          console.error("Deleted observation photo cleanup failed", cleanupError);
+        }
+      }
     } else if (parsed.data.action === "delete_observation_photo") {
       const observation = await db.prepare(
         "SELECT photo_key FROM observations WHERE public_id = ? AND agave_public_id = ? LIMIT 1",

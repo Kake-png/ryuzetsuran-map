@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import {
-  ArrowLeft,
   ArrowUpRight,
   Camera,
   Leaf,
@@ -10,8 +9,6 @@ import {
   Sprout,
 } from "lucide-react";
 import Link from "next/link";
-
-import { SiteFooter } from "@/app/site-footer";
 
 export const metadata: Metadata = {
   title: "観察帖と小さな多肉植物入門",
@@ -79,11 +76,6 @@ const smallPlants = [
 export default function GuidePage() {
   return (
     <main className="guide-shell">
-      <header className="guide-masthead">
-        <Link href="/" className="guide-back-link"><ArrowLeft aria-hidden="true" />地図へ戻る</Link>
-        <p>RYUZETSURAN FIELD ATLAS · NOTE 01</p>
-      </header>
-
       <section className="guide-hero" id="americana">
         <div className="guide-hero-copy">
           <p className="plate-number">PART I · SPECIES 01</p>
@@ -195,7 +187,6 @@ export default function GuidePage() {
         </div>
         <Link href="/"><Camera aria-hidden="true" />地図で探す</Link>
       </footer>
-      <SiteFooter />
     </main>
   );
 }

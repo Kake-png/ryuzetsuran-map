@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import {
-  ArrowLeft,
   CalendarDays,
   ExternalLink,
   History,
@@ -11,7 +10,6 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { SiteFooter } from "@/app/site-footer";
 import {
   BLOOM_STATUSES,
   LOCATION_TYPES,
@@ -82,15 +80,10 @@ export default async function SpotPage({ params }: SpotPageProps) {
   if (result.state === "unavailable") {
     return (
       <main className="spot-shell">
-        <header className="spot-masthead">
-          <Link href="/"><ArrowLeft aria-hidden="true" />地図へ戻る</Link>
-          <span>FIELD RECORD</span>
-        </header>
         <section className="spot-unavailable">
           <h1>地点情報を読み込めませんでした</h1>
           <p>時間をおいて、もう一度お試しください。</p>
         </section>
-        <SiteFooter />
       </main>
     );
   }
@@ -121,11 +114,6 @@ export default async function SpotPage({ params }: SpotPageProps) {
   return (
     <main className="spot-shell">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
-      <header className="spot-masthead">
-        <Link href={`/?spot=${encodeURIComponent(pin.id)}`}><ArrowLeft aria-hidden="true" />地図で見る</Link>
-        <span>FIELD RECORD · {pin.id}</span>
-      </header>
-
       <article className="spot-record">
         <header className="spot-record-heading">
           <p>AGAVE AMERICANA · OBSERVATION</p>
@@ -203,7 +191,6 @@ export default async function SpotPage({ params }: SpotPageProps) {
         </div>
       </article>
 
-      <SiteFooter />
     </main>
   );
 }

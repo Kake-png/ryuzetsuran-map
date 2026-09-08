@@ -24,3 +24,20 @@ test("keeps the support link small and does not expose the admin route", async (
   assert.match(support, /https:\/\/ofuse\.me\/da117b13/);
   assert.match(support, /支援の有無によって/);
 });
+
+test("uses one shared header and footer and keeps full history on spot pages", async () => {
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const header = await readFile(new URL("../app/site-header.tsx", import.meta.url), "utf8");
+  const map = await readFile(new URL("../app/map-app.tsx", import.meta.url), "utf8");
+  const spot = await readFile(new URL("../app/spots/[id]/page.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(layout, /<SiteHeader \/>/);
+  assert.match(layout, /<SiteFooter \/>/);
+  assert.match(header, /投稿する/);
+  assert.match(header, /地図に戻る/);
+  assert.match(map, /selected\.observations\.find\(\(observation\) => observation\.photoUrl\)/);
+  assert.doesNotMatch(map, /className="observation-list"/);
+  assert.match(spot, /history\.map\(\(observation\)/);
+  assert.match(css, /\.spot-page-link[\s\S]*?white-space: nowrap/);
+});

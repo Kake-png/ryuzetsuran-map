@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowLeft, ArrowUpRight, HeartHandshake } from "lucide-react";
-import Link from "next/link";
-
-import { SiteFooter } from "@/app/site-footer";
+import { ArrowUpRight, HeartHandshake } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "運営を応援する",
@@ -13,10 +10,6 @@ export const metadata: Metadata = {
 export default function SupportPage() {
   return (
     <main className="support-shell">
-      <header className="spot-masthead">
-        <Link href="/"><ArrowLeft aria-hidden="true" />地図へ戻る</Link>
-        <span>ABOUT SUPPORT</span>
-      </header>
       <section className="support-note">
         <HeartHandshake aria-hidden="true" />
         <p>FIELD ATLAS · SUPPORT</p>
@@ -27,7 +20,6 @@ export default function SupportPage() {
           OFUSEで応援する <ArrowUpRight aria-hidden="true" />
         </a>
       </section>
-      <SiteFooter />
     </main>
   );
 }

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import { SiteFooter } from "./site-footer";
+import { SiteHeader } from "./site-header";
+
 export const metadata: Metadata = {
   title: {
     default: "リュウゼツランマップ｜アオノリュウゼツラン開花マップ",
@@ -40,7 +43,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased site-frame">
+        <SiteHeader />
+        <div className="site-page-content">{children}</div>
+        <SiteFooter />
+      </body>
     </html>
   );
 }

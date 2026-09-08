@@ -9,9 +9,12 @@ test("restores ended pins and lets an admin maintain individual observations", a
   assert.match(adminApi, /visibility IN \('pending', 'rejected'\)/);
   assert.match(adminApi, /action: z\.literal\("update_observation"\)/);
   assert.match(adminApi, /action: z\.literal\("delete_observation_photo"\)/);
+  assert.match(adminApi, /action: z\.literal\("delete_observation"\)/);
+  assert.match(adminApi, /DELETE FROM observations WHERE public_id = \? AND agave_public_id = \?/);
   assert.match(adminApi, /syncPinFromLatestObservation/);
   assert.match(adminUi, /公開へ復帰/);
   assert.match(adminUi, /この写真だけ削除/);
+  assert.match(adminUi, /この記録を削除/);
   assert.match(adminUi, /観察記録を追加/);
 });
 

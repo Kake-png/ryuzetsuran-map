@@ -8,17 +8,14 @@ import maplibregl, {
 import {
   AlertTriangle,
   Binoculars,
-  BookOpenText,
   CalendarDays,
   ChevronRight,
   ExternalLink,
-  Flower2,
   History,
   ImageOff,
   Info,
   LocateFixed,
   MapPin,
-  Plus,
   RefreshCw,
   Share2,
   ShieldCheck,
@@ -47,7 +44,6 @@ import {
 import { ChangeRequestDialog } from "./request-dialog";
 import { ObservationDialog } from "./observation-dialog";
 import { SafetyDialog } from "./safety-dialog";
-import { SiteFooter } from "./site-footer";
 import { SubmissionDialog } from "./submission-dialog";
 
 type Filter = "blooming" | "changing" | "all";
@@ -146,6 +142,17 @@ export function MapApp() {
   }, []);
 
   useEffect(() => {
+    const openSubmission = () => setSubmissionOpen(true);
+    const openRules = () => setSafetyOpen(true);
+    window.addEventListener("ryuzetsuran:submit", openSubmission);
+    window.addEventListener("ryuzetsuran:rules", openRules);
+    return () => {
+      window.removeEventListener("ryuzetsuran:submit", openSubmission);
+      window.removeEventListener("ryuzetsuran:rules", openRules);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     let map: MapLibreMap | null = null;
     let timeout: number | null = null;
@@ -197,12 +204,28 @@ export function MapApp() {
   }, [filter, pins, showDead]);
 
   const selected = pins.find((pin) => pin.id === selectedId) ?? null;
-  const selectedHistory = selected
-    ? selected.observations.length
-      ? selected.observations
-      : [{ id: `${selected.id}-initial`, status: selected.status, observedAt: selected.observedAt, description: selected.description, photoUrl: selected.photoUrl, photoAlt: selected.photoAlt, photoAttribution: selected.photoAttribution, verifiedSubmitter: true }]
-    : [];
-
+  const selectedLatest = selected
+    ? selected.observations[0] ?? {
+        id: `${selected.id}-initial`,
+        status: selected.status,
+        observedAt: selected.observedAt,
+        description: selected.description,
+        photoUrl: selected.photoUrl,
+        photoAlt: selected.photoAlt,
+        photoAttribution: selected.photoAttribution,
+        verifiedSubmitter: true,
+      }
+    : null;
+  const selectedLatestPhoto = selected
+    ? selected.observations.find((observation) => observation.photoUrl) ??
+      (selected.photoUrl
+        ? {
+            photoUrl: selected.photoUrl,
+            photoAlt: selected.photoAlt,
+            photoAttribution: selected.photoAttribution,
+          }
+        : null)
+    : null;
   useEffect(() => {
     if (selectedId && !visiblePins.some((pin) => pin.id === selectedId)) {
       setSelectedId(visiblePins[0]?.id ?? null);
@@ -291,32 +314,6 @@ export function MapApp() {
 
   return (
     <main className="app-shell">
-      <header className="site-header">
-        <div className="brand-lockup">
-          <div className="brand-mark" aria-hidden="true">
-            <Flower2 />
-          </div>
-          <div>
-            <p className="brand-kicker">FIELD ATLAS · AGAVE AMERICANA</p>
-            <h1>リュウゼツランマップ</h1>
-          </div>
-        </div>
-        <nav className="header-actions" aria-label="サイト内メニュー">
-          <Link href="/guide" className="header-guide-link">
-            <BookOpenText aria-hidden="true" />
-            <span>観察・育成帖</span>
-          </Link>
-          <Button variant="ghost" onClick={() => setSafetyOpen(true)}>
-            <ShieldCheck />
-            <span className="desktop-label">掲載と見学のルール</span>
-          </Button>
-          <Button className="submit-button" onClick={() => setSubmissionOpen(true)}>
-            <Plus />
-            投稿する
-          </Button>
-        </nav>
-      </header>
-
       <div className="safety-strip">
         <Info aria-hidden="true" />
         <span>見学は公道・公開エリアから。私有地への立ち入りや、路上駐車はしないでください。</span>
@@ -373,11 +370,11 @@ export function MapApp() {
             {selected && (
               <article className="selected-card">
                 <div className="selected-card-topline">
-                  <StatusLabel status={selected.status} />
-                  <span className={ageInDays(selected.observedAt) > 45 ? "freshness is-old" : "freshness"}>
-                    {ageInDays(selected.observedAt) === 0
+                  <StatusLabel status={selectedLatest?.status ?? selected.status} />
+                  <span className={ageInDays(selectedLatest?.observedAt ?? selected.observedAt) > 45 ? "freshness is-old" : "freshness"}>
+                    {ageInDays(selectedLatest?.observedAt ?? selected.observedAt) === 0
                       ? "本日確認"
-                      : `${ageInDays(selected.observedAt)}日前に確認`}
+                      : `${ageInDays(selectedLatest?.observedAt ?? selected.observedAt)}日前に確認`}
                   </span>
                 </div>
                 <h2>{selected.title}</h2>
@@ -386,17 +383,17 @@ export function MapApp() {
                   <b>投稿者申告</b>
                 </div>
 
-                {selected.photoUrl ? (
+                {selectedLatestPhoto?.photoUrl ? (
                   <button
                     type="button"
                     className="pin-photo-button"
-                    onClick={() => openPhoto(selected.photoUrl as string, selected.photoAlt, selected.photoAttribution)}
+                    onClick={() => openPhoto(selectedLatestPhoto.photoUrl as string, selectedLatestPhoto.photoAlt, selectedLatestPhoto.photoAttribution)}
                     aria-label="写真を開く"
                   >
                     <img
                       className="pin-photo"
-                      src={selected.photoUrl}
-                      alt={selected.photoAlt || `${selected.title}の投稿写真`}
+                      src={selectedLatestPhoto.photoUrl}
+                      alt={selectedLatestPhoto.photoAlt || `${selected.title}の直近の投稿写真`}
                     />
                   </button>
                 ) : (
@@ -413,7 +410,7 @@ export function MapApp() {
                   </div>
                   <div>
                     <dt><CalendarDays />観察日</dt>
-                    <dd>{formatDate(selected.observedAt)}</dd>
+                    <dd>{formatDate(selectedLatest?.observedAt ?? selected.observedAt)}</dd>
                   </div>
                   <div>
                     <dt><RefreshCw />前回の開花</dt>
@@ -421,34 +418,14 @@ export function MapApp() {
                   </div>
                 </dl>
 
-                {selected.description && <p className="pin-description">{selected.description}</p>}
-                <div className="observation-heading">
-                  <div><History /><strong>観察履歴</strong><span>{selectedHistory.length}件</span></div>
+                {selectedLatest?.description && <p className="pin-description">{selectedLatest.description}</p>}
+                <div className="observation-heading latest-observation-actions">
+                  <div><History /><strong>最新の観察</strong></div>
                   <Button size="sm" variant="outline" disabled={Boolean(selected.demo)} onClick={() => setObservationOpen(true)}>いまの様子を追加</Button>
                 </div>
                 {selected.demo && (
                   <p className="demo-observation-note">デモでは履歴の表示だけ確認できます。実際の投稿では、ここから日時・状態・写真を追加できます。</p>
                 )}
-                <ol className="observation-list">
-                  {selectedHistory.map((observation) => (
-                    <li key={observation.id}>
-                      <div>
-                        <div className="history-topline"><StatusLabel status={observation.status} /><time>{formatDate(observation.observedAt)}</time></div>
-                        {observation.photoUrl && (
-                          <button
-                            type="button"
-                            className="history-photo-button"
-                            onClick={() => openPhoto(observation.photoUrl as string, observation.photoAlt, observation.photoAttribution)}
-                            aria-label="観察写真を開く"
-                          >
-                            <img src={observation.photoUrl} alt={observation.photoAlt || "観察時の写真"} />
-                          </button>
-                        )}
-                        {observation.description && <p>{observation.description}</p>}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
                 <div className="access-note">
                   <ShieldCheck aria-hidden="true" />
                   <div>
@@ -461,7 +438,7 @@ export function MapApp() {
                   <div>
                     {!selected.demo && (
                       <Link href={`/spots/${encodeURIComponent(selected.id)}`} className="spot-page-link">
-                        <Share2 aria-hidden="true" />地点ページ
+                        <Share2 aria-hidden="true" />地点ページを見る
                       </Link>
                     )}
                     <Button
@@ -554,8 +531,6 @@ export function MapApp() {
           </div>
         </section>
       </div>
-
-      <SiteFooter />
 
       <SubmissionDialog
         open={submissionOpen}

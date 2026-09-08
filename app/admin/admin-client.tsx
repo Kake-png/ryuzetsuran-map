@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowLeft,
   Check,
   Eye,
   EyeOff,
@@ -16,7 +15,6 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -130,6 +128,7 @@ const outcomeLabels: Record<string, string> = {
 type DeleteTarget =
   | { kind: "pin"; id: string }
   | { kind: "request"; id: string; pinId: string }
+  | { kind: "observation"; pinId: string; observationId: string }
   | { kind: "observation-photo"; pinId: string; observationId: string };
 
 type ObservationDraft = {
@@ -225,8 +224,13 @@ export function AdminClient() {
       ? await act({ action: "delete", pinId: deleteTarget.id })
       : deleteTarget.kind === "request"
         ? await act({ action: "delete_and_resolve", requestId: deleteTarget.id })
-        : await act({ action: "delete_observation_photo", pinId: deleteTarget.pinId, observationId: deleteTarget.observationId });
-    if (completed) setDeleteTarget(null);
+        : deleteTarget.kind === "observation"
+          ? await act({ action: "delete_observation", pinId: deleteTarget.pinId, observationId: deleteTarget.observationId })
+          : await act({ action: "delete_observation_photo", pinId: deleteTarget.pinId, observationId: deleteTarget.observationId });
+    if (completed) {
+      if (deleteTarget.kind === "observation" || deleteTarget.kind === "observation-photo") setEditingPin(null);
+      setDeleteTarget(null);
+    }
   }
 
   function openRecordEditor(pin: AdminPin) {
@@ -287,7 +291,6 @@ export function AdminClient() {
     <main className="admin-shell">
       <header className="admin-header">
         <div>
-          <Link href="/" className="back-link"><ArrowLeft />地図へ戻る</Link>
           <p className="dialog-kicker">MODERATION</p>
           <h1>運営確認箱</h1>
           <p>普段の投稿は自動公開。私有地・生活や安全に関する申告は一時非公開とし、内容と再公開の根拠を記録して対応します。</p>
@@ -457,10 +460,12 @@ export function AdminClient() {
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{deleteTarget?.kind === "observation-photo" ? "この写真を完全に削除しますか？" : "この投稿データを完全に削除しますか？"}</AlertDialogTitle>
+            <AlertDialogTitle>{deleteTarget?.kind === "observation-photo" ? "この写真を完全に削除しますか？" : deleteTarget?.kind === "observation" ? "この観察記録を完全に削除しますか？" : "この投稿データを完全に削除しますか？"}</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget?.kind === "observation-photo"
                 ? "この1枚だけを写真ストレージから削除します。観察日時・状態・本文は残り、元に戻せません。"
+                : deleteTarget?.kind === "observation"
+                  ? "観察日時、状態、本文、写真をまとめて削除します。元に戻せません。唯一の公開観察記録は削除できません。"
                 : "地点データ、観察履歴、写真を削除します。元に戻せません。削除要請から実行する場合は、要請記録と再登録制限だけが運営用に残ります。"}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -511,7 +516,10 @@ export function AdminClient() {
                         {observation.photo_url && <label className="admin-field-wide"><span>写真の説明</span><Input value={draft.photoAlt} maxLength={160} onChange={(event) => updateDraft(observation.public_id, { photoAlt: event.target.value })} /></label>}
                       </div>
                       {observation.photo_url && <div className="admin-observation-photo"><img src={observation.photo_url} alt={observation.photo_alt || "投稿写真"} /><Button variant="destructive" size="sm" disabled={loading} onClick={() => setDeleteTarget({ kind: "observation-photo", pinId: editingPin.public_id, observationId: observation.public_id })}><ImageMinus />この写真だけ削除</Button></div>}
-                      <Button variant="outline" size="sm" disabled={loading} onClick={() => void saveObservation(observation)}><Save />この記録を保存</Button>
+                      <div className="admin-observation-actions">
+                        <Button variant="outline" size="sm" disabled={loading} onClick={() => void saveObservation(observation)}><Save />この記録を保存</Button>
+                        <Button variant="destructive" size="sm" disabled={loading || (observation.visibility === "approved" && editingPin.observations.filter((item) => item.visibility === "approved").length < 2)} onClick={() => setDeleteTarget({ kind: "observation", pinId: editingPin.public_id, observationId: observation.public_id })}><Trash2 />この記録を削除</Button>
+                      </div>
                     </article>
                   );
                 })}

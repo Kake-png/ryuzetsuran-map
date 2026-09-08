@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { ArrowLeft, ArrowUpRight, Box, Lightbulb, Sprout } from "lucide-react";
+import { ArrowUpRight, Box, Lightbulb, Sprout } from "lucide-react";
 import Link from "next/link";
-
-import { SiteFooter } from "@/app/site-footer";
 
 export const metadata: Metadata = {
   title: "植物と育成用品",
@@ -48,10 +46,6 @@ const basics = [
 export default function GrowPage() {
   return (
     <main className="grow-shell">
-      <header className="spot-masthead">
-        <Link href="/guide"><ArrowLeft aria-hidden="true" />観察・育成帖へ戻る</Link>
-        <span>GROWING NOTES</span>
-      </header>
       <article className="grow-page">
         <header>
           <p>SMALL PLANTS · GROWING TOOLS</p>
@@ -83,7 +77,6 @@ export default function GrowPage() {
           <Link href="/guide">観察・育成帖を読む <ArrowUpRight aria-hidden="true" /></Link>
         </section>
       </article>
-      <SiteFooter />
     </main>
   );
 }
