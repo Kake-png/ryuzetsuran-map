@@ -20,6 +20,7 @@ import {
   MapPin,
   Plus,
   RefreshCw,
+  Share2,
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
@@ -46,6 +47,7 @@ import {
 import { ChangeRequestDialog } from "./request-dialog";
 import { ObservationDialog } from "./observation-dialog";
 import { SafetyDialog } from "./safety-dialog";
+import { SiteFooter } from "./site-footer";
 import { SubmissionDialog } from "./submission-dialog";
 
 type Filter = "blooming" | "changing" | "all";
@@ -87,6 +89,7 @@ export function MapApp() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
+  const deepLinkedIdRef = useRef<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const [pins, setPins] = useState<AgavePin[]>([]);
@@ -120,7 +123,16 @@ export function MapApp() {
       setPins(data.pins);
       setDemoMode(Boolean(data.demoMode));
       setDataUnavailable(Boolean(data.unavailable));
-      setSelectedId((current) => current ?? data.pins?.find((pin) => pin.status !== "dead")?.id ?? data.pins?.[0]?.id ?? null);
+      const requestedId = new URLSearchParams(window.location.search).get("spot")?.toUpperCase() ?? null;
+      const requestedPin = data.pins.find((pin) => pin.id === requestedId && !pin.demo);
+      if (requestedPin) {
+        deepLinkedIdRef.current = requestedPin.id;
+        setSelectedId(requestedPin.id);
+        if (requestedPin.status === "dead") setShowDead(true);
+        if (!["blooming", "flower_stalk", "likely", "pups"].includes(requestedPin.status)) setFilter("all");
+      } else {
+        setSelectedId((current) => current ?? data.pins?.find((pin) => pin.status !== "dead")?.id ?? data.pins?.[0]?.id ?? null);
+      }
     } catch {
       setDataUnavailable(true);
       toast.error("ピン情報を読み込めませんでした。時間をおいて再読み込みしてください。");
@@ -222,6 +234,18 @@ export function MapApp() {
         .addTo(mapRef.current as MapLibreMap);
     });
   }, [mapReady, selectedId, visiblePins]);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !deepLinkedIdRef.current) return;
+    const pin = pins.find((item) => item.id === deepLinkedIdRef.current);
+    if (!pin) return;
+    mapRef.current.flyTo({
+      center: [pin.longitude, pin.latitude],
+      zoom: 13,
+      essential: true,
+    });
+    deepLinkedIdRef.current = null;
+  }, [mapReady, pins]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -434,15 +458,22 @@ export function MapApp() {
                 </div>
                 <div className="selected-footer">
                   <span>ピンID {selected.id}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={Boolean(selected.demo)}
-                    onClick={() => setRequestOpen(true)}
-                  >
-                    修正・削除を依頼
-                    <ChevronRight />
-                  </Button>
+                  <div>
+                    {!selected.demo && (
+                      <Link href={`/spots/${encodeURIComponent(selected.id)}`} className="spot-page-link">
+                        <Share2 aria-hidden="true" />地点ページ
+                      </Link>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={Boolean(selected.demo)}
+                      onClick={() => setRequestOpen(true)}
+                    >
+                      修正・削除を依頼
+                      <ChevronRight />
+                    </Button>
+                  </div>
                 </div>
               </article>
             )}
@@ -523,6 +554,8 @@ export function MapApp() {
           </div>
         </section>
       </div>
+
+      <SiteFooter />
 
       <SubmissionDialog
         open={submissionOpen}

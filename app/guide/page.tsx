@@ -10,8 +10,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { SiteFooter } from "@/app/site-footer";
+
 export const metadata: Metadata = {
-  title: "観察帖と小さな多肉植物入門 | リュウゼツランマップ",
+  title: "観察帖と小さな多肉植物入門",
   description: "アオノリュウゼツランを安全に観察する方法と、小さな鉢で楽しめる多肉植物の入門案内。",
 };
 
@@ -191,6 +193,7 @@ export default function GuidePage() {
         </div>
         <Link href="/"><Camera aria-hidden="true" />地図で探す</Link>
       </footer>
+      <SiteFooter />
     </main>
   );
 }
