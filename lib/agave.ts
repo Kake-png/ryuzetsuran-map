@@ -18,14 +18,6 @@ export const LOCATION_TYPES = {
 
 export type LocationType = keyof typeof LOCATION_TYPES;
 
-export type PhotoAttribution = {
-  author: string;
-  license: string;
-  licenseUrl: string | null;
-  sourceUrl: string | null;
-  changes: string | null;
-};
-
 export type AgavePin = {
   id: string;
   title: string;
@@ -43,7 +35,6 @@ export type AgavePin = {
   description: string;
   photoUrl: string | null;
   photoAlt: string | null;
-  photoAttribution: PhotoAttribution | null;
   observations: AgaveObservation[];
   demo?: boolean;
 };
@@ -55,7 +46,6 @@ export type AgaveObservation = {
   description: string;
   photoUrl: string | null;
   photoAlt: string | null;
-  photoAttribution: PhotoAttribution | null;
   verifiedSubmitter: boolean;
 };
 
@@ -77,7 +67,6 @@ export const DEMO_PINS: AgavePin[] = [
     description: "花茎の上部まで咲き進んでいる、という想定の表示例です。",
     photoUrl: null,
     photoAlt: null,
-    photoAttribution: null,
     observations: [
       {
         id: "DEMO-OBS-003",
@@ -86,7 +75,6 @@ export const DEMO_PINS: AgavePin[] = [
         description: "花茎の上部まで咲き進んだ、という想定の最新記録です。",
         photoUrl: null,
         photoAlt: null,
-        photoAttribution: null,
         verifiedSubmitter: true,
       },
       {
@@ -96,7 +84,6 @@ export const DEMO_PINS: AgavePin[] = [
         description: "花茎が大きく伸び始めた、という想定の記録です。",
         photoUrl: null,
         photoAlt: null,
-        photoAttribution: null,
         verifiedSubmitter: false,
       },
       {
@@ -106,7 +93,6 @@ export const DEMO_PINS: AgavePin[] = [
         description: "株の中央に変化が見られた、という想定の初回記録です。",
         photoUrl: null,
         photoAlt: null,
-        photoAttribution: null,
         verifiedSubmitter: false,
       },
     ],
@@ -129,7 +115,6 @@ export const DEMO_PINS: AgavePin[] = [
     description: "中央の株から花茎が伸びてきた、という想定の表示例です。",
     photoUrl: null,
     photoAlt: null,
-    photoAttribution: null,
     observations: [],
     demo: true,
   },
@@ -150,7 +135,6 @@ export const DEMO_PINS: AgavePin[] = [
     description: "平常時のピンがどう見えるかを確認するための表示例です。",
     photoUrl: null,
     photoAlt: null,
-    photoAttribution: null,
     observations: [],
     demo: true,
   },

@@ -10,10 +10,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import { SiteFooter } from "@/app/site-footer";
-
 export const metadata: Metadata = {
-  title: "観察帖と小さな多肉植物入門",
+  title: "観察帖と小さな多肉植物入門 | リュウゼツランマップ",
   description: "アオノリュウゼツランを安全に観察する方法と、小さな鉢で楽しめる多肉植物の入門案内。",
 };
 
@@ -59,6 +57,8 @@ const smallPlants = [
       ["置き場", "明るい日陰や室内の窓辺"],
       ["寒さ", "強い霜や凍結を避けて室内へ"],
     ],
+    affiliateLabel: "ハオルチアを探す",
+    affiliateHtml: `<a href="https://hb.afl.rakuten.co.jp/ichiba/5751f097.1d8be35b.5751f098.1049a3b0/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fvistajapan%2F10000356%2F&link_type=pict&ut=eyJwYWdlIjoiaXRlbSIsInR5cGUiOiJwaWN0Iiwic2l6ZSI6IjI0MHgyNDAiLCJuYW0iOjEsIm5hbXAiOiJyaWdodCIsImNvbSI6MSwiY29tcCI6ImRvd24iLCJwcmljZSI6MCwiYm9yIjoxLCJjb2wiOjEsImJidG4iOjEsInByb2QiOjAsImFtcCI6ZmFsc2V9" target="_blank" rel="nofollow sponsored noopener" style="word-wrap:break-word;"><img src="https://hbb.afl.rakuten.co.jp/hgb/5751f097.1d8be35b.5751f098.1049a3b0/?me_id=1315485&item_id=10000368&pc=https%3A%2F%2Fthumbnail.image.rakuten.co.jp%2F%400_mall%2Fvistajapan%2Fcabinet%2F13116663%2Fimgrc0126375865.jpg%3F_ex%3D240x240&s=240x240&t=pict" border="0" style="margin:2px" alt="" title=""></a>`,
   },
   {
     name: "アガベ・トウメヤナ・ベラ",
@@ -72,8 +72,12 @@ const smallPlants = [
       ["置き場", "日当たりと風通しのよい場所"],
       ["寒さ", "比較的強いが、凍結と冬の過湿を避ける"],
     ],
+    affiliateLabel: "トウメヤナを探す",
+    affiliateHtml: `<a href="https://hb.afl.rakuten.co.jp/ichiba/57527bda.8a5da43e.57527bdb.7a24c51c/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fyukei%2Fs13233v%2F&link_type=pict&ut=eyJwYWdlIjoiaXRlbSIsInR5cGUiOiJwaWN0Iiwic2l6ZSI6IjI0MHgyNDAiLCJuYW0iOjEsIm5hbXAiOiJyaWdodCIsImNvbSI6MSwiY29tcCI6ImRvd24iLCJwcmljZSI6MCwiYm9yIjoxLCJjb2wiOjEsImJidG4iOjEsInByb2QiOjAsImFtcCI6ZmFsc2V9" target="_blank" rel="nofollow sponsored noopener" style="word-wrap:break-word;"><img src="https://hbb.afl.rakuten.co.jp/hgb/57527bda.8a5da43e.57527bdb.7a24c51c/?me_id=1223811&item_id=10041186&pc=https%3A%2F%2Fthumbnail.image.rakuten.co.jp%2F%400_mall%2Fyukei%2Fcabinet%2Fyukei15%2Fs13233.jpg%3F_ex%3D240x240&s=240x240&t=pict" border="0" style="margin:2px" alt="" title=""></a>`,
   },
 ];
+
+const wateringCanAffiliateHtml = `<a href="https://hb.afl.rakuten.co.jp/ichiba/575284b5.29312d7e.575284b6.57060614/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fasia-kobo%2F94838%2F&link_type=pict&ut=eyJwYWdlIjoiaXRlbSIsInR5cGUiOiJwaWN0Iiwic2l6ZSI6IjI0MHgyNDAiLCJuYW0iOjEsIm5hbXAiOiJyaWdodCIsImNvbSI6MSwiY29tcCI6ImRvd24iLCJwcmljZSI6MCwiYm9yIjoxLCJjb2wiOjEsImJidG4iOjEsInByb2QiOjAsImFtcCI6ZmFsc2V9" target="_blank" rel="nofollow sponsored noopener" style="word-wrap:break-word;"><img src="https://hbb.afl.rakuten.co.jp/hgb/575284b5.29312d7e.575284b6.57060614/?me_id=1201643&item_id=10025031&pc=https%3A%2F%2Fimage.rakuten.co.jp%2Fasia-kobo%2Fcabinet%2Fq007%2F94838_7.jpg%3F_ex%3D240x240&s=240x240&t=pict" border="0" style="margin:2px" alt="" title=""></a>`;
 
 export default function GuidePage() {
   return (
@@ -161,6 +165,10 @@ export default function GuidePage() {
                   <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
                 ))}
               </dl>
+              <div className="affiliate-product">
+                <div className="affiliate-image" dangerouslySetInnerHTML={{ __html: plant.affiliateHtml }} />
+                <p>{plant.affiliateLabel}</p>
+              </div>
             </article>
           ))}
         </div>
@@ -177,12 +185,16 @@ export default function GuidePage() {
       <section className="guide-commerce-note" aria-labelledby="commerce-heading">
         <div>
           <p className="plate-number">NEXT NOTE</p>
-          <h2 id="commerce-heading">育てる道具も紹介予定</h2>
+          <h2 id="commerce-heading">育てる道具を探す</h2>
         </div>
         <div className="commerce-copy">
           <p>
-            今後は、小鉢や排水性のよい用土など、育成帖の内容に必要な道具を紹介していく予定です。
+            小さな鉢の水やりには、細い注ぎ口の水差しが便利です。紹介料が入るリンクには、広告・アフィリエイトであることを明記しています。
           </p>
+          <div className="affiliate-tool">
+            <div className="affiliate-image" dangerouslySetInnerHTML={{ __html: wateringCanAffiliateHtml }} />
+            <p>小さな鉢に使いやすい細口の水差し</p>
+          </div>
         </div>
       </section>
 
@@ -193,7 +205,6 @@ export default function GuidePage() {
         </div>
         <Link href="/"><Camera aria-hidden="true" />地図で探す</Link>
       </footer>
-      <SiteFooter />
     </main>
   );
 }
