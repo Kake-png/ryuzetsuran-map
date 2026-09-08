@@ -88,9 +88,27 @@ export async function POST(request: Request) {
           `UPDATE agaves SET bloom_status = ?, observed_at = ?, description = ?,
              photo_key = COALESCE(?, photo_key),
              photo_alt = CASE WHEN ? IS NOT NULL THEN ? ELSE photo_alt END,
+             photo_author = CASE WHEN ? IS NOT NULL THEN NULL ELSE photo_author END,
+             photo_license = CASE WHEN ? IS NOT NULL THEN NULL ELSE photo_license END,
+             photo_license_url = CASE WHEN ? IS NOT NULL THEN NULL ELSE photo_license_url END,
+             photo_source_url = CASE WHEN ? IS NOT NULL THEN NULL ELSE photo_source_url END,
+             photo_changes = CASE WHEN ? IS NOT NULL THEN NULL ELSE photo_changes END,
              updated_at = CURRENT_TIMESTAMP
            WHERE public_id = ?`,
-        ).bind(value.bloomStatus, value.observedAt, value.description, uploadedKey, uploadedKey, value.photoAlt || null, value.pinId),
+        ).bind(
+          value.bloomStatus,
+          value.observedAt,
+          value.description,
+          uploadedKey,
+          uploadedKey,
+          value.photoAlt || null,
+          uploadedKey,
+          uploadedKey,
+          uploadedKey,
+          uploadedKey,
+          uploadedKey,
+          value.pinId,
+        ),
       );
     }
     await db.batch(statements);

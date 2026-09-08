@@ -6,8 +6,12 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  FilePenLine,
+  ImageMinus,
   KeyRound,
+  Plus,
   RotateCcw,
+  Save,
   Search,
   ShieldCheck,
   Trash2,
@@ -28,7 +32,34 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { BLOOM_STATUSES } from "@/lib/agave";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
+type AdminObservation = {
+  public_id: string;
+  bloom_status: keyof typeof BLOOM_STATUSES;
+  observed_at: string;
+  description: string;
+  photo_url: string | null;
+  photo_alt: string | null;
+  visibility: string;
+  created_at: string;
+};
 
 type AdminPin = {
   public_id: string;
@@ -52,6 +83,7 @@ type AdminPin = {
   visibility: "approved" | "pending" | "hidden" | "rejected";
   created_at: string;
   observation_count: number;
+  observations: AdminObservation[];
 };
 
 type AdminRequest = {
@@ -97,7 +129,15 @@ const outcomeLabels: Record<string, string> = {
 
 type DeleteTarget =
   | { kind: "pin"; id: string }
-  | { kind: "request"; id: string; pinId: string };
+  | { kind: "request"; id: string; pinId: string }
+  | { kind: "observation-photo"; pinId: string; observationId: string };
+
+type ObservationDraft = {
+  bloomStatus: keyof typeof BLOOM_STATUSES;
+  observedAt: string;
+  description: string;
+  photoAlt: string;
+};
 
 export function AdminClient() {
   const [token, setToken] = useState("");
@@ -111,6 +151,14 @@ export function AdminClient() {
   const [reason, setReason] = useState("all");
   const [pinVisibility, setPinVisibility] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [editingPin, setEditingPin] = useState<AdminPin | null>(null);
+  const [observationDrafts, setObservationDrafts] = useState<Record<string, ObservationDraft>>({});
+  const [newObservation, setNewObservation] = useState<ObservationDraft>({
+    bloomStatus: "normal",
+    observedAt: new Date().toLocaleDateString("sv-SE"),
+    description: "",
+    photoAlt: "",
+  });
 
   async function load(candidate = token) {
     if (!candidate) return;
@@ -175,8 +223,64 @@ export function AdminClient() {
     if (!deleteTarget) return;
     const completed = deleteTarget.kind === "pin"
       ? await act({ action: "delete", pinId: deleteTarget.id })
-      : await act({ action: "delete_and_resolve", requestId: deleteTarget.id });
+      : deleteTarget.kind === "request"
+        ? await act({ action: "delete_and_resolve", requestId: deleteTarget.id })
+        : await act({ action: "delete_observation_photo", pinId: deleteTarget.pinId, observationId: deleteTarget.observationId });
     if (completed) setDeleteTarget(null);
+  }
+
+  function openRecordEditor(pin: AdminPin) {
+    setEditingPin(pin);
+    setObservationDrafts(Object.fromEntries(pin.observations.map((observation) => [
+      observation.public_id,
+      {
+        bloomStatus: observation.bloom_status,
+        observedAt: observation.observed_at,
+        description: observation.description,
+        photoAlt: observation.photo_alt ?? "",
+      },
+    ])));
+    setNewObservation({
+      bloomStatus: pin.bloom_status,
+      observedAt: new Date().toLocaleDateString("sv-SE"),
+      description: "",
+      photoAlt: "",
+    });
+  }
+
+  function updateDraft(observationId: string, patch: Partial<ObservationDraft>) {
+    setObservationDrafts((current) => ({
+      ...current,
+      [observationId]: { ...current[observationId], ...patch },
+    }));
+  }
+
+  async function saveObservation(observation: AdminObservation) {
+    if (!editingPin) return;
+    const draft = observationDrafts[observation.public_id];
+    if (!draft) return;
+    const completed = await act({
+      action: "update_observation",
+      pinId: editingPin.public_id,
+      observationId: observation.public_id,
+      bloomStatus: draft.bloomStatus,
+      observedAt: draft.observedAt,
+      description: draft.description,
+      photoAlt: draft.photoAlt,
+    });
+    if (completed) setEditingPin(null);
+  }
+
+  async function addObservation() {
+    if (!editingPin) return;
+    const completed = await act({
+      action: "create_observation",
+      pinId: editingPin.public_id,
+      bloomStatus: newObservation.bloomStatus,
+      observedAt: newObservation.observedAt,
+      description: newObservation.description,
+    });
+    if (completed) setEditingPin(null);
   }
 
   return (
@@ -319,6 +423,9 @@ export function AdminClient() {
                     rel="noreferrer"
                   >位置を別地図で確認 <ExternalLink /></a>
                   <div className="admin-actions">
+                    <Button variant="outline" disabled={loading} onClick={() => openRecordEditor(pin)}>
+                      <FilePenLine />記録を編集
+                    </Button>
                     {pin.observation_count > 1 && (
                       <Button variant="outline" disabled={loading} onClick={() => void act({ action: "undo_latest_observation", pinId: pin.public_id })}>
                         <RotateCcw />最新の観察を取り消す
@@ -328,11 +435,11 @@ export function AdminClient() {
                       <Button variant="destructive" disabled={loading} onClick={() => void act({ action: "hide", pinId: pin.public_id })}>
                         <EyeOff />非公開
                       </Button>
-                    ) : pin.visibility !== "rejected" ? (
+                    ) : (
                       <Button variant="outline" disabled={loading} onClick={() => void act({ action: "approve", pinId: pin.public_id })}>
-                        <Eye />公開する
+                        <Eye />公開へ復帰
                       </Button>
-                    ) : null}
+                    )}
                     <Button variant="ghost" disabled={loading} onClick={() => void act({ action: "reject", pinId: pin.public_id })}>
                       <EyeOff />掲載終了
                     </Button>
@@ -350,9 +457,11 @@ export function AdminClient() {
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>この投稿データを完全に削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>{deleteTarget?.kind === "observation-photo" ? "この写真を完全に削除しますか？" : "この投稿データを完全に削除しますか？"}</AlertDialogTitle>
             <AlertDialogDescription>
-              地点データ、観察履歴、R2に保存された写真を削除します。元に戻せません。削除要請から実行する場合は、要請記録と再登録制限だけが運営用に残ります。
+              {deleteTarget?.kind === "observation-photo"
+                ? "この1枚だけを写真ストレージから削除します。観察日時・状態・本文は残り、元に戻せません。"
+                : "地点データ、観察履歴、写真を削除します。元に戻せません。削除要請から実行する場合は、要請記録と再登録制限だけが運営用に残ります。"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -363,6 +472,55 @@ export function AdminClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog open={editingPin !== null} onOpenChange={(open) => { if (!open) setEditingPin(null); }}>
+        <DialogContent className="admin-record-dialog sm:max-w-3xl">
+          <DialogHeader>
+            <p className="dialog-kicker">OBSERVATION EDITOR</p>
+            <DialogTitle>{editingPin?.title} の記録</DialogTitle>
+            <DialogDescription>観察記録を訂正すると、もっとも新しい記録が地図の現在状態にも反映されます。</DialogDescription>
+          </DialogHeader>
+          {editingPin && (
+            <div className="admin-record-editor">
+              <section className="admin-new-observation">
+                <div>
+                  <p className="eyebrow">ADD BY ADMIN</p>
+                  <h3>観察記録を追加</h3>
+                </div>
+                <div className="admin-observation-fields">
+                  <label><span>状態</span><Select value={newObservation.bloomStatus} onValueChange={(value) => value && setNewObservation((current) => ({ ...current, bloomStatus: value as keyof typeof BLOOM_STATUSES }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(BLOOM_STATUSES).map(([value, item]) => <SelectItem key={value} value={value}>{item.label}</SelectItem>)}</SelectContent></Select></label>
+                  <label><span>観察日</span><Input type="date" value={newObservation.observedAt} onChange={(event) => setNewObservation((current) => ({ ...current, observedAt: event.target.value }))} /></label>
+                  <label className="admin-field-wide"><span>本文</span><Textarea value={newObservation.description} maxLength={1200} onChange={(event) => setNewObservation((current) => ({ ...current, description: event.target.value }))} placeholder="運営が確認・追記した内容" /></label>
+                </div>
+                <Button disabled={loading} onClick={() => void addObservation()}><Plus />この内容で追加</Button>
+              </section>
+              <section className="admin-observation-list">
+                <div><p className="eyebrow">RECORDS</p><h3>既存の観察記録</h3></div>
+                {editingPin.observations.map((observation) => {
+                  const draft = observationDrafts[observation.public_id];
+                  if (!draft) return null;
+                  return (
+                    <article key={observation.public_id} className="admin-observation-card">
+                      <div className="admin-observation-card-heading">
+                        <code>{observation.public_id}</code>
+                        {observation.visibility !== "approved" && <Badge variant="outline">{observation.visibility}</Badge>}
+                      </div>
+                      <div className="admin-observation-fields">
+                        <label><span>状態</span><Select value={draft.bloomStatus} onValueChange={(value) => value && updateDraft(observation.public_id, { bloomStatus: value as keyof typeof BLOOM_STATUSES })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(BLOOM_STATUSES).map(([value, item]) => <SelectItem key={value} value={value}>{item.label}</SelectItem>)}</SelectContent></Select></label>
+                        <label><span>観察日</span><Input type="date" value={draft.observedAt} onChange={(event) => updateDraft(observation.public_id, { observedAt: event.target.value })} /></label>
+                        <label className="admin-field-wide"><span>本文</span><Textarea value={draft.description} maxLength={1200} onChange={(event) => updateDraft(observation.public_id, { description: event.target.value })} /></label>
+                        {observation.photo_url && <label className="admin-field-wide"><span>写真の説明</span><Input value={draft.photoAlt} maxLength={160} onChange={(event) => updateDraft(observation.public_id, { photoAlt: event.target.value })} /></label>}
+                      </div>
+                      {observation.photo_url && <div className="admin-observation-photo"><img src={observation.photo_url} alt={observation.photo_alt || "投稿写真"} /><Button variant="destructive" size="sm" disabled={loading} onClick={() => setDeleteTarget({ kind: "observation-photo", pinId: editingPin.public_id, observationId: observation.public_id })}><ImageMinus />この写真だけ削除</Button></div>}
+                      <Button variant="outline" size="sm" disabled={loading} onClick={() => void saveObservation(observation)}><Save />この記録を保存</Button>
+                    </article>
+                  );
+                })}
+              </section>
+            </div>
+          )}
+          <DialogFooter><Button variant="ghost" onClick={() => setEditingPin(null)}>閉じる</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

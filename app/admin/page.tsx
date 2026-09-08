@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { AdminClient } from "./admin-client";
 
 export const metadata: Metadata = {
-  title: "運営確認箱 | リュウゼツランマップ",
+  title: "運営確認箱",
   robots: { index: false, follow: false },
 };
 

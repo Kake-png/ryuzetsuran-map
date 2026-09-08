@@ -27,6 +27,11 @@ export const agaves = sqliteTable(
     description: text("description").notNull().default(""),
     photoKey: text("photo_key"),
     photoAlt: text("photo_alt"),
+    photoAuthor: text("photo_author"),
+    photoLicense: text("photo_license"),
+    photoLicenseUrl: text("photo_license_url"),
+    photoSourceUrl: text("photo_source_url"),
+    photoChanges: text("photo_changes"),
     submitterRelation: text("submitter_relation").notNull(),
     permissionConfirmed: integer("permission_confirmed", { mode: "boolean" })
       .notNull()
@@ -116,6 +121,11 @@ export const observations = sqliteTable(
     description: text("description").notNull().default(""),
     photoKey: text("photo_key"),
     photoAlt: text("photo_alt"),
+    photoAuthor: text("photo_author"),
+    photoLicense: text("photo_license"),
+    photoLicenseUrl: text("photo_license_url"),
+    photoSourceUrl: text("photo_source_url"),
+    photoChanges: text("photo_changes"),
     verifiedSubmitter: integer("verified_submitter", { mode: "boolean" })
       .notNull()
       .default(false),

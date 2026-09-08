@@ -100,7 +100,7 @@ export function SubmissionDialog({
   onPickLocation: () => void;
   onPublished: () => Promise<void>;
 }) {
-  const [bloomStatus, setBloomStatus] = useState("flower_stalk");
+  const [bloomStatus, setBloomStatus] = useState("normal");
   const [municipality, setMunicipality] = useState("");
   const [municipalityLoading, setMunicipalityLoading] = useState(false);
   const [locationType, setLocationType] = useState("public_space");

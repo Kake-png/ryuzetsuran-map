@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { DEMO_PINS } from "@/lib/agave";
+import { DEMO_PINS, type PhotoAttribution } from "@/lib/agave";
 import { sanitizeWebp } from "@/lib/photo-security";
 import {
   assertHumanTiming,
@@ -66,11 +66,37 @@ type AgaveRow = {
   description: string;
   photo_key: string | null;
   photo_alt: string | null;
+  photo_author: string | null;
+  photo_license: string | null;
+  photo_license_url: string | null;
+  photo_source_url: string | null;
+  photo_changes: string | null;
 };
 
 function photoUrl(key: string | null) {
   if (!key) return null;
   return `/api/photos/${key.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+type PhotoMetadataRow = {
+  photo_author?: unknown;
+  photo_license?: unknown;
+  photo_license_url?: unknown;
+  photo_source_url?: unknown;
+  photo_changes?: unknown;
+};
+
+function photoAttribution(row: PhotoMetadataRow): PhotoAttribution | null {
+  const author = typeof row.photo_author === "string" ? row.photo_author : null;
+  const license = typeof row.photo_license === "string" ? row.photo_license : null;
+  if (!author || !license) return null;
+  return {
+    author,
+    license,
+    licenseUrl: typeof row.photo_license_url === "string" ? row.photo_license_url : null,
+    sourceUrl: typeof row.photo_source_url === "string" ? row.photo_source_url : null,
+    changes: typeof row.photo_changes === "string" ? row.photo_changes : null,
+  };
 }
 
 function distanceMeters(
@@ -98,7 +124,8 @@ export async function GET() {
         `SELECT public_id, title, species, bloom_status, observed_at,
                 previous_bloom_year, plant_count, latitude, longitude,
                 municipality, location_name, location_type, access_note,
-                description, photo_key, photo_alt
+                description, photo_key, photo_alt, photo_author, photo_license,
+                photo_license_url, photo_source_url, photo_changes
          FROM agaves
          WHERE visibility = 'approved'
          ORDER BY observed_at DESC, created_at DESC
@@ -108,7 +135,8 @@ export async function GET() {
 
     const history = await db.prepare(
       `SELECT public_id, agave_public_id, bloom_status, observed_at, description,
-              photo_key, photo_alt, verified_submitter
+              photo_key, photo_alt, photo_author, photo_license, photo_license_url,
+              photo_source_url, photo_changes, verified_submitter
        FROM observations
        WHERE visibility = 'approved'
        ORDER BY observed_at DESC, created_at DESC
@@ -137,6 +165,7 @@ export async function GET() {
       description: row.description,
       photoUrl: photoUrl(row.photo_key),
       photoAlt: row.photo_alt,
+      photoAttribution: photoAttribution(row),
       observations: (grouped.get(row.public_id) ?? []).slice(0, 20).map((item) => ({
         id: String(item.public_id),
         status: item.bloom_status,
@@ -144,6 +173,7 @@ export async function GET() {
         description: String(item.description ?? ""),
         photoUrl: photoUrl(typeof item.photo_key === "string" ? item.photo_key : null),
         photoAlt: typeof item.photo_alt === "string" ? item.photo_alt : null,
+        photoAttribution: photoAttribution(item),
         verifiedSubmitter: Boolean(item.verified_submitter),
       })),
     }));

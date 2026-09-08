@@ -6,8 +6,12 @@ import {
   enforceRateLimit,
   errorResponse,
   HttpError,
+  publicCode,
   runtimeEnv,
 } from "@/lib/server-security";
+
+const bloomStatusSchema = z.enum(["blooming", "flower_stalk", "likely", "normal", "pups", "dead", "unknown"]);
+const observationDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 const actionSchema = z.discriminatedUnion("action", [
   z.object({
@@ -17,6 +21,27 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.enum(["resolve_request", "hide_and_resolve", "restore_and_resolve", "delete_and_resolve"]),
     requestId: z.string().trim(),
+  }),
+  z.object({
+    action: z.literal("create_observation"),
+    pinId: z.string().trim(),
+    bloomStatus: bloomStatusSchema,
+    observedAt: observationDateSchema,
+    description: z.string().trim().max(1200),
+  }),
+  z.object({
+    action: z.literal("update_observation"),
+    pinId: z.string().trim(),
+    observationId: z.string().trim(),
+    bloomStatus: bloomStatusSchema,
+    observedAt: observationDateSchema,
+    description: z.string().trim().max(1200),
+    photoAlt: z.string().trim().max(160),
+  }),
+  z.object({
+    action: z.literal("delete_observation_photo"),
+    pinId: z.string().trim(),
+    observationId: z.string().trim(),
   }),
 ]);
 
@@ -75,6 +100,40 @@ async function permanentlyDeletePin(
   await db.batch(statements);
 }
 
+async function syncPinFromLatestObservation(db: D1Database, pinId: string) {
+  const latest = await db.prepare(
+    `SELECT bloom_status, observed_at, description, photo_key, photo_alt,
+            photo_author, photo_license, photo_license_url, photo_source_url,
+            photo_changes
+     FROM observations
+     WHERE agave_public_id = ? AND visibility = 'approved'
+     ORDER BY observed_at DESC, created_at DESC
+     LIMIT 1`,
+  ).bind(pinId).first<Record<string, unknown>>();
+  if (!latest) return;
+
+  await db.prepare(
+    `UPDATE agaves
+     SET bloom_status = ?, observed_at = ?, description = ?, photo_key = ?,
+         photo_alt = ?, photo_author = ?, photo_license = ?,
+         photo_license_url = ?, photo_source_url = ?, photo_changes = ?,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE public_id = ?`,
+  ).bind(
+    latest.bloom_status,
+    latest.observed_at,
+    latest.description,
+    latest.photo_key,
+    latest.photo_alt,
+    latest.photo_author,
+    latest.photo_license,
+    latest.photo_license_url,
+    latest.photo_source_url,
+    latest.photo_changes,
+    pinId,
+  ).run();
+}
+
 export async function GET(request: Request) {
   try {
     await enforceRateLimit(request, "admin-access", 80);
@@ -97,7 +156,7 @@ export async function GET(request: Request) {
     ).run();
     const like = `%${filters.q}%`;
 
-    const [pins, requests] = await Promise.all([
+    const [pins, requests, observations] = await Promise.all([
       db
         .prepare(
           `SELECT public_id, title, species, bloom_status, observed_at,
@@ -129,7 +188,30 @@ export async function GET(request: Request) {
         )
         .bind(filters.requestStatus, filters.requestStatus, filters.reason, filters.reason, filters.q, like, like, like)
         .all(),
+      db
+        .prepare(
+          `SELECT public_id, agave_public_id, bloom_status, observed_at,
+                  description, photo_key, photo_alt, visibility, created_at
+           FROM observations
+           ORDER BY observed_at DESC, created_at DESC
+           LIMIT 3000`,
+        )
+        .all(),
     ]);
+
+    const observationsByPin = new Map<string, Record<string, unknown>[]>();
+    for (const row of observations.results as Record<string, unknown>[]) {
+      const pinId = String(row.agave_public_id);
+      const photoKey = typeof row.photo_key === "string" ? row.photo_key : null;
+      const item = {
+        ...row,
+        photo_key: undefined,
+        photo_url: photoKey
+          ? `/api/photos/${photoKey.split("/").map(encodeURIComponent).join("/")}`
+          : null,
+      };
+      observationsByPin.set(pinId, [...(observationsByPin.get(pinId) ?? []), item]);
+    }
 
     const pendingPins = pins.results.map((row: Record<string, unknown>) => {
       const pin = row;
@@ -140,6 +222,7 @@ export async function GET(request: Request) {
         photo_url: key
           ? `/api/photos/${key.split("/").map(encodeURIComponent).join("/")}`
           : null,
+        observations: observationsByPin.get(String(pin.public_id)) ?? [],
       };
     });
 
@@ -162,14 +245,69 @@ export async function POST(request: Request) {
     const db = runtimeEnv().DB;
     if (!db) throw new HttpError(503, "データベースを利用できません。");
 
-    if ("pinId" in parsed.data) {
+    if (parsed.data.action === "create_observation") {
+      const pin = await db.prepare("SELECT public_id FROM agaves WHERE public_id = ? LIMIT 1")
+        .bind(parsed.data.pinId).first<{ public_id: string }>();
+      if (!pin) throw new HttpError(404, "対象のピンが見つかりません。");
+      await db.prepare(
+        `INSERT INTO observations (
+          id, public_id, agave_public_id, bloom_status, observed_at,
+          description, verified_submitter, visibility
+        ) VALUES (?, ?, ?, ?, ?, ?, 1, 'approved')`,
+      ).bind(
+        crypto.randomUUID(),
+        publicCode("OBS"),
+        parsed.data.pinId,
+        parsed.data.bloomStatus,
+        parsed.data.observedAt,
+        parsed.data.description,
+      ).run();
+      await syncPinFromLatestObservation(db, parsed.data.pinId);
+    } else if (parsed.data.action === "update_observation") {
+      const updated = await db.prepare(
+        `UPDATE observations
+         SET bloom_status = ?, observed_at = ?, description = ?, photo_alt = ?
+         WHERE public_id = ? AND agave_public_id = ?`,
+      ).bind(
+        parsed.data.bloomStatus,
+        parsed.data.observedAt,
+        parsed.data.description,
+        parsed.data.photoAlt || null,
+        parsed.data.observationId,
+        parsed.data.pinId,
+      ).run();
+      if (!updated.meta.changes) throw new HttpError(404, "対象の観察記録が見つかりません。");
+      await syncPinFromLatestObservation(db, parsed.data.pinId);
+    } else if (parsed.data.action === "delete_observation_photo") {
+      const observation = await db.prepare(
+        "SELECT photo_key FROM observations WHERE public_id = ? AND agave_public_id = ? LIMIT 1",
+      ).bind(parsed.data.observationId, parsed.data.pinId).first<{ photo_key: string | null }>();
+      if (!observation) throw new HttpError(404, "対象の観察記録が見つかりません。");
+      if (!observation.photo_key) throw new HttpError(400, "この観察記録には削除できる写真がありません。");
+      const bucket = runtimeEnv().BUCKET;
+      if (!bucket) throw new HttpError(503, "写真ストレージを利用できないため削除を中止しました。");
+      await db.prepare(
+        `UPDATE observations
+         SET photo_key = NULL, photo_alt = NULL, photo_author = NULL,
+             photo_license = NULL, photo_license_url = NULL,
+             photo_source_url = NULL, photo_changes = NULL
+         WHERE public_id = ? AND agave_public_id = ?`,
+      ).bind(parsed.data.observationId, parsed.data.pinId).run();
+      await syncPinFromLatestObservation(db, parsed.data.pinId);
+      try {
+        await bucket.delete(observation.photo_key);
+      } catch (cleanupError) {
+        console.error("Observation photo cleanup failed", cleanupError);
+      }
+    } else if ("pinId" in parsed.data) {
       if (parsed.data.action === "delete") {
         await permanentlyDeletePin(db, runtimeEnv().BUCKET, parsed.data.pinId);
         return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
       }
       if (parsed.data.action === "undo_latest_observation") {
         const observations = await db.prepare(
-          `SELECT public_id, bloom_status, observed_at, description, photo_key, photo_alt
+          `SELECT public_id, bloom_status, observed_at, description, photo_key, photo_alt,
+                  photo_author, photo_license, photo_license_url, photo_source_url, photo_changes
            FROM observations
            WHERE agave_public_id = ? AND visibility = 'approved'
            ORDER BY observed_at DESC, created_at DESC
@@ -181,9 +319,23 @@ export async function POST(request: Request) {
           db.prepare("UPDATE observations SET visibility = 'hidden' WHERE public_id = ?").bind(latest.public_id),
           db.prepare(
             `UPDATE agaves SET bloom_status = ?, observed_at = ?, description = ?,
-               photo_key = ?, photo_alt = ?, updated_at = CURRENT_TIMESTAMP
+               photo_key = ?, photo_alt = ?, photo_author = ?, photo_license = ?,
+               photo_license_url = ?, photo_source_url = ?, photo_changes = ?,
+               updated_at = CURRENT_TIMESTAMP
              WHERE public_id = ?`,
-          ).bind(previous.bloom_status, previous.observed_at, previous.description, previous.photo_key, previous.photo_alt, parsed.data.pinId),
+          ).bind(
+            previous.bloom_status,
+            previous.observed_at,
+            previous.description,
+            previous.photo_key,
+            previous.photo_alt,
+            previous.photo_author,
+            previous.photo_license,
+            previous.photo_license_url,
+            previous.photo_source_url,
+            previous.photo_changes,
+            parsed.data.pinId,
+          ),
         ]);
         return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
       }
@@ -194,9 +346,9 @@ export async function POST(request: Request) {
       ).bind(visibility, parsed.data.pinId).run();
       if (!result.meta.changes) throw new HttpError(404, "対象のピンが見つかりません。");
       if (parsed.data.action === "approve") {
-        await db.prepare("UPDATE observations SET visibility = 'approved' WHERE agave_public_id = ? AND visibility = 'pending'").bind(parsed.data.pinId).run();
+        await db.prepare("UPDATE observations SET visibility = 'approved' WHERE agave_public_id = ? AND visibility IN ('pending', 'rejected')").bind(parsed.data.pinId).run();
       } else if (parsed.data.action === "reject") {
-        await db.prepare("UPDATE observations SET visibility = 'hidden' WHERE agave_public_id = ? AND visibility = 'pending'").bind(parsed.data.pinId).run();
+        await db.prepare("UPDATE observations SET visibility = 'rejected' WHERE agave_public_id = ? AND visibility = 'pending'").bind(parsed.data.pinId).run();
       }
     } else if (parsed.data.action === "delete_and_resolve") {
       const change = await db

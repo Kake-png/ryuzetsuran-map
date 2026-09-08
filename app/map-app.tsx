@@ -11,6 +11,7 @@ import {
   BookOpenText,
   CalendarDays,
   ChevronRight,
+  ExternalLink,
   Flower2,
   History,
   ImageOff,
@@ -19,6 +20,7 @@ import {
   MapPin,
   Plus,
   RefreshCw,
+  Share2,
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
@@ -26,20 +28,35 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Toaster } from "@/components/ui/sonner";
 import {
   BLOOM_STATUSES,
   LOCATION_TYPES,
   type AgavePin,
   type BloomStatus,
+  type PhotoAttribution,
 } from "@/lib/agave";
 
 import { ChangeRequestDialog } from "./request-dialog";
 import { ObservationDialog } from "./observation-dialog";
 import { SafetyDialog } from "./safety-dialog";
+import { SiteFooter } from "./site-footer";
 import { SubmissionDialog } from "./submission-dialog";
 
 type Filter = "blooming" | "changing" | "all";
+
+type OpenedPhoto = {
+  url: string;
+  alt: string;
+  attribution: PhotoAttribution | null;
+};
 
 function ageInDays(date: string) {
   return Math.max(
@@ -72,19 +89,21 @@ export function MapApp() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
+  const deepLinkedIdRef = useRef<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const [pins, setPins] = useState<AgavePin[]>([]);
   const [loading, setLoading] = useState(true);
   const [demoMode, setDemoMode] = useState(false);
   const [dataUnavailable, setDataUnavailable] = useState(false);
-  const [filter, setFilter] = useState<Filter>("changing");
+  const [filter, setFilter] = useState<Filter>("all");
   const [showDead, setShowDead] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [submissionOpen, setSubmissionOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
   const [observationOpen, setObservationOpen] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
+  const [openedPhoto, setOpenedPhoto] = useState<OpenedPhoto | null>(null);
   const [pickingLocation, setPickingLocation] = useState(false);
   const [pickedLocation, setPickedLocation] = useState<{
     latitude: number;
@@ -104,7 +123,16 @@ export function MapApp() {
       setPins(data.pins);
       setDemoMode(Boolean(data.demoMode));
       setDataUnavailable(Boolean(data.unavailable));
-      setSelectedId((current) => current ?? data.pins?.find((pin) => pin.status !== "dead")?.id ?? data.pins?.[0]?.id ?? null);
+      const requestedId = new URLSearchParams(window.location.search).get("spot")?.toUpperCase() ?? null;
+      const requestedPin = data.pins.find((pin) => pin.id === requestedId && !pin.demo);
+      if (requestedPin) {
+        deepLinkedIdRef.current = requestedPin.id;
+        setSelectedId(requestedPin.id);
+        if (requestedPin.status === "dead") setShowDead(true);
+        if (!["blooming", "flower_stalk", "likely", "pups"].includes(requestedPin.status)) setFilter("all");
+      } else {
+        setSelectedId((current) => current ?? data.pins?.find((pin) => pin.status !== "dead")?.id ?? data.pins?.[0]?.id ?? null);
+      }
     } catch {
       setDataUnavailable(true);
       toast.error("ピン情報を読み込めませんでした。時間をおいて再読み込みしてください。");
@@ -172,7 +200,7 @@ export function MapApp() {
   const selectedHistory = selected
     ? selected.observations.length
       ? selected.observations
-      : [{ id: `${selected.id}-initial`, status: selected.status, observedAt: selected.observedAt, description: selected.description, photoUrl: selected.photoUrl, photoAlt: selected.photoAlt, verifiedSubmitter: true }]
+      : [{ id: `${selected.id}-initial`, status: selected.status, observedAt: selected.observedAt, description: selected.description, photoUrl: selected.photoUrl, photoAlt: selected.photoAlt, photoAttribution: selected.photoAttribution, verifiedSubmitter: true }]
     : [];
 
   useEffect(() => {
@@ -208,6 +236,18 @@ export function MapApp() {
   }, [mapReady, selectedId, visiblePins]);
 
   useEffect(() => {
+    if (!mapReady || !mapRef.current || !deepLinkedIdRef.current) return;
+    const pin = pins.find((item) => item.id === deepLinkedIdRef.current);
+    if (!pin) return;
+    mapRef.current.flyTo({
+      center: [pin.longitude, pin.latitude],
+      zoom: 13,
+      essential: true,
+    });
+    deepLinkedIdRef.current = null;
+  }, [mapReady, pins]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!map || !pickingLocation) return;
     map.getCanvas().classList.add("is-picking-location");
@@ -239,6 +279,14 @@ export function MapApp() {
   function beginLocationPick() {
     setSubmissionOpen(false);
     setPickingLocation(true);
+  }
+
+  function openPhoto(url: string, alt: string | null, attribution: PhotoAttribution | null) {
+    setOpenedPhoto({
+      url,
+      alt: alt || "投稿写真",
+      attribution,
+    });
   }
 
   return (
@@ -339,11 +387,18 @@ export function MapApp() {
                 </div>
 
                 {selected.photoUrl ? (
-                  <img
-                    className="pin-photo"
-                    src={selected.photoUrl}
-                    alt={selected.photoAlt || `${selected.title}の投稿写真`}
-                  />
+                  <button
+                    type="button"
+                    className="pin-photo-button"
+                    onClick={() => openPhoto(selected.photoUrl as string, selected.photoAlt, selected.photoAttribution)}
+                    aria-label="写真を開く"
+                  >
+                    <img
+                      className="pin-photo"
+                      src={selected.photoUrl}
+                      alt={selected.photoAlt || `${selected.title}の投稿写真`}
+                    />
+                  </button>
                 ) : (
                   <div className="photo-placeholder">
                     <ImageOff aria-hidden="true" />
@@ -379,7 +434,16 @@ export function MapApp() {
                     <li key={observation.id}>
                       <div>
                         <div className="history-topline"><StatusLabel status={observation.status} /><time>{formatDate(observation.observedAt)}</time></div>
-                        {observation.photoUrl && <img src={observation.photoUrl} alt={observation.photoAlt || "観察時の写真"} />}
+                        {observation.photoUrl && (
+                          <button
+                            type="button"
+                            className="history-photo-button"
+                            onClick={() => openPhoto(observation.photoUrl as string, observation.photoAlt, observation.photoAttribution)}
+                            aria-label="観察写真を開く"
+                          >
+                            <img src={observation.photoUrl} alt={observation.photoAlt || "観察時の写真"} />
+                          </button>
+                        )}
                         {observation.description && <p>{observation.description}</p>}
                       </div>
                     </li>
@@ -394,15 +458,22 @@ export function MapApp() {
                 </div>
                 <div className="selected-footer">
                   <span>ピンID {selected.id}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={Boolean(selected.demo)}
-                    onClick={() => setRequestOpen(true)}
-                  >
-                    修正・削除を依頼
-                    <ChevronRight />
-                  </Button>
+                  <div>
+                    {!selected.demo && (
+                      <Link href={`/spots/${encodeURIComponent(selected.id)}`} className="spot-page-link">
+                        <Share2 aria-hidden="true" />地点ページ
+                      </Link>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={Boolean(selected.demo)}
+                      onClick={() => setRequestOpen(true)}
+                    >
+                      修正・削除を依頼
+                      <ChevronRight />
+                    </Button>
+                  </div>
                 </div>
               </article>
             )}
@@ -484,6 +555,8 @@ export function MapApp() {
         </section>
       </div>
 
+      <SiteFooter />
+
       <SubmissionDialog
         open={submissionOpen}
         onOpenChange={setSubmissionOpen}
@@ -499,6 +572,41 @@ export function MapApp() {
       />
       <ObservationDialog open={observationOpen} onOpenChange={setObservationOpen} pin={selected?.demo ? null : selected} onPublished={loadPins} />
       <SafetyDialog open={safetyOpen} onOpenChange={setSafetyOpen} />
+      <Dialog open={Boolean(openedPhoto)} onOpenChange={(open) => { if (!open) setOpenedPhoto(null); }}>
+        <DialogContent className="photo-dialog sm:max-w-3xl">
+          {openedPhoto && (
+            <>
+              <DialogHeader className="sr-only">
+                <DialogTitle>投稿写真</DialogTitle>
+                <DialogDescription>写真の権利情報</DialogDescription>
+              </DialogHeader>
+              <img className="photo-dialog-image" src={openedPhoto.url} alt={openedPhoto.alt} />
+              {openedPhoto.attribution ? (
+                <div className="photo-attribution">
+                  <p>写真：{openedPhoto.attribution.author} · {openedPhoto.attribution.license}</p>
+                  <details>
+                    <summary>写真情報</summary>
+                    <dl>
+                      <div>
+                        <dt>原典</dt>
+                        <dd>{openedPhoto.attribution.sourceUrl ? <a href={openedPhoto.attribution.sourceUrl} target="_blank" rel="noreferrer">掲載元を開く <ExternalLink aria-hidden="true" /></a> : "記録なし"}</dd>
+                      </div>
+                      <div>
+                        <dt>ライセンス</dt>
+                        <dd>{openedPhoto.attribution.licenseUrl ? <a href={openedPhoto.attribution.licenseUrl} target="_blank" rel="noreferrer">{openedPhoto.attribution.license} <ExternalLink aria-hidden="true" /></a> : openedPhoto.attribution.license}</dd>
+                      </div>
+                      <div>
+                        <dt>加工</dt>
+                        <dd>{openedPhoto.attribution.changes || "原図をそのまま掲載"}</dd>
+                      </div>
+                    </dl>
+                  </details>
+                </div>
+              ) : <p className="photo-submission-label">投稿写真</p>}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
       <Toaster position="top-center" richColors />
     </main>
   );
