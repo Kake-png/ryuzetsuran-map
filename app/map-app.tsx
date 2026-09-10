@@ -17,6 +17,7 @@ import {
   LocateFixed,
   MapPin,
   RefreshCw,
+  Search,
   Share2,
   ShieldCheck,
 } from "lucide-react";
@@ -54,6 +55,13 @@ type OpenedPhoto = {
   attribution: PhotoAttribution | null;
 };
 
+type LocationSearchResult = {
+  name: string;
+  latitude: number;
+  longitude: number;
+  type: string;
+};
+
 function ageInDays(date: string) {
   return Math.max(
     0,
@@ -86,6 +94,7 @@ export function MapApp() {
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
   const deepLinkedIdRef = useRef<string | null>(null);
+  const mapNavigationRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const [pins, setPins] = useState<AgavePin[]>([]);
@@ -105,6 +114,10 @@ export function MapApp() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [mapSearchQuery, setMapSearchQuery] = useState("");
+  const [mapSearchResults, setMapSearchResults] = useState<LocationSearchResult[]>([]);
+  const [mapSearchLoading, setMapSearchLoading] = useState(false);
+  const [mapSearchError, setMapSearchError] = useState<string | null>(null);
 
   async function loadPins() {
     setLoading(true);
@@ -177,6 +190,23 @@ export function MapApp() {
       map.on("load", () => {
         setMapReady(true);
         setMapFailed(false);
+        map?.getCanvas().addEventListener("pointerdown", () => {
+          mapNavigationRef.current = true;
+        }, { once: true });
+        if (!new URLSearchParams(window.location.search).has("spot") && "geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              if (mapNavigationRef.current) return;
+              map?.flyTo({
+                center: [position.coords.longitude, position.coords.latitude],
+                zoom: 10.5,
+                essential: true,
+              });
+            },
+            () => undefined,
+            { enableHighAccuracy: false, timeout: 6_000, maximumAge: 600_000 },
+          );
+        }
       });
       timeout = window.setTimeout(() => {
         if (!map?.loaded()) setMapFailed(true);
@@ -291,6 +321,7 @@ export function MapApp() {
   }, [pickingLocation]);
 
   function focusPin(pin: AgavePin) {
+    mapNavigationRef.current = true;
     setSelectedId(pin.id);
     mapRef.current?.flyTo({
       center: [pin.longitude, pin.latitude],
@@ -302,6 +333,53 @@ export function MapApp() {
   function beginLocationPick() {
     setSubmissionOpen(false);
     setPickingLocation(true);
+  }
+
+  function previewLocation(coordinates: { latitude: number; longitude: number }) {
+    mapNavigationRef.current = true;
+    setPickedLocation(null);
+    setSubmissionOpen(false);
+    setPickingLocation(true);
+    mapRef.current?.flyTo({
+      center: [coordinates.longitude, coordinates.latitude],
+      zoom: Math.max(mapRef.current.getZoom(), 15),
+      essential: true,
+    });
+  }
+
+  async function searchMap(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = mapSearchQuery.trim();
+    if (query.length < 2) {
+      setMapSearchError("地名や住所を2文字以上で入力してください。");
+      return;
+    }
+    setMapSearchLoading(true);
+    setMapSearchError(null);
+    try {
+      const response = await fetch(`/api/location-search?q=${encodeURIComponent(query)}`);
+      const data = await response.json() as { results?: LocationSearchResult[]; error?: string };
+      if (!response.ok) throw new Error(data.error || "場所を検索できませんでした。");
+      const results = data.results ?? [];
+      setMapSearchResults(results);
+      if (results.length === 0) setMapSearchError("該当する場所が見つかりませんでした。");
+    } catch (searchError) {
+      setMapSearchResults([]);
+      setMapSearchError(searchError instanceof Error ? searchError.message : "場所を検索できませんでした。");
+    } finally {
+      setMapSearchLoading(false);
+    }
+  }
+
+  function showSearchResult(result: LocationSearchResult) {
+    mapNavigationRef.current = true;
+    mapRef.current?.flyTo({
+      center: [result.longitude, result.latitude],
+      zoom: 14,
+      essential: true,
+    });
+    setMapSearchResults([]);
+    setMapSearchError(null);
   }
 
   function openPhoto(url: string, alt: string | null, attribution: PhotoAttribution | null) {
@@ -490,6 +568,41 @@ export function MapApp() {
 
         <section className="map-stage" aria-label="地図">
           <div ref={containerRef} className="map-canvas" />
+          <div className="map-search-panel">
+            <form className="map-search-form" onSubmit={searchMap} role="search">
+              <Search aria-hidden="true" />
+              <label htmlFor="map-place-search" className="sr-only">地名や住所で地図を検索</label>
+              <input
+                id="map-place-search"
+                value={mapSearchQuery}
+                onChange={(event) => {
+                  setMapSearchQuery(event.target.value);
+                  setMapSearchError(null);
+                }}
+                placeholder="市区町村・住所・施設名を検索"
+                maxLength={100}
+              />
+              <button type="submit" disabled={mapSearchLoading}>
+                {mapSearchLoading ? "検索中" : "検索"}
+              </button>
+            </form>
+            {(mapSearchResults.length > 0 || mapSearchError) && (
+              <div className="map-search-results" aria-live="polite">
+                {mapSearchError && <p>{mapSearchError}</p>}
+                {mapSearchResults.map((result) => (
+                  <button
+                    type="button"
+                    key={`${result.latitude}-${result.longitude}-${result.name}`}
+                    onClick={() => showSearchResult(result)}
+                  >
+                    <MapPin aria-hidden="true" />
+                    <span>{result.name}</span>
+                  </button>
+                ))}
+                {mapSearchResults.length > 0 && <small>検索データ © OpenStreetMap contributors</small>}
+              </div>
+            )}
+          </div>
           <div className="map-filter-mobile" aria-label="開花状況で絞り込む">
             <button
               type="button"
@@ -511,8 +624,8 @@ export function MapApp() {
           {pickingLocation && (
             <div className="pick-location-banner">
               <LocateFixed aria-hidden="true" />
-              <span>リュウゼツランの位置を地図上でクリック</span>
-              <button type="button" onClick={() => setPickingLocation(false)}>キャンセル</button>
+              <span>リュウゼツランの位置を地図上でクリックまたはタップ</span>
+              <button type="button" onClick={() => { setPickingLocation(false); setSubmissionOpen(true); }}>キャンセル</button>
             </div>
           )}
           {mapFailed && (
@@ -537,6 +650,8 @@ export function MapApp() {
         onOpenChange={setSubmissionOpen}
         coordinates={pickedLocation}
         onPickLocation={beginLocationPick}
+        onPreviewLocation={previewLocation}
+        onClearLocation={() => setPickedLocation(null)}
         onPublished={loadPins}
       />
       <ChangeRequestDialog

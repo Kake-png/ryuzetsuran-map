@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { BLOOM_STATUSES, LOCATION_TYPES } from "@/lib/agave";
+import { formatCoordinates, parseCoordinates } from "@/lib/coordinates";
 
 type Coordinates = { latitude: number; longitude: number } | null;
 
@@ -140,12 +141,16 @@ export function SubmissionDialog({
   onOpenChange,
   coordinates,
   onPickLocation,
+  onPreviewLocation,
+  onClearLocation,
   onPublished,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   coordinates: Coordinates;
   onPickLocation: () => void;
+  onPreviewLocation: (coordinates: NonNullable<Coordinates>) => void;
+  onClearLocation: () => void;
   onPublished: () => Promise<void>;
 }) {
   const [bloomStatus, setBloomStatus] = useState("normal");
@@ -162,6 +167,16 @@ export function SubmissionDialog({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const [startedAt] = useState(() => Date.now());
+  const [observedAt, setObservedAt] = useState("");
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
+  const [coordinateText, setCoordinateText] = useState("");
+  const [coordinateError, setCoordinateError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const now = new Date();
+    setObservedAt(now.toLocaleDateString("sv-SE"));
+    setCurrentYear(now.getFullYear());
+  }, []);
 
   useEffect(() => {
     if (!photo) {
@@ -175,6 +190,8 @@ export function SubmissionDialog({
 
   useEffect(() => {
     if (!coordinates) return;
+    setCoordinateText(formatCoordinates(coordinates));
+    setCoordinateError(null);
     const controller = new AbortController();
     setMunicipalityLoading(true);
     fetch(`/api/municipality?lat=${coordinates.latitude}&lon=${coordinates.longitude}`, { signal: controller.signal })
@@ -186,6 +203,21 @@ export function SubmissionDialog({
       .finally(() => setMunicipalityLoading(false));
     return () => controller.abort();
   }, [coordinates]);
+
+  function changeCoordinateText(value: string) {
+    setCoordinateText(value);
+    setCoordinateError(null);
+    if (coordinates) onClearLocation();
+  }
+
+  function previewCoordinateText() {
+    const parsed = parseCoordinates(coordinateText);
+    if (!parsed) {
+      setCoordinateError("日本国内の緯度・経度を読み取れませんでした。Google Mapsからコピーした座標かURLを貼り付けてください。");
+      return;
+    }
+    onPreviewLocation(parsed);
+  }
 
   async function selectPhoto(event: React.ChangeEvent<HTMLInputElement>) {
     const chosen = event.target.files?.[0];
@@ -293,19 +325,28 @@ export function SubmissionDialog({
             </DialogHeader>
 
             <div className="form-section location-picker-section">
-              <div>
-                <span className="field-label">投稿位置 <b>必須</b></span>
-                {coordinates ? (
-                  <p className="coordinate-value">
-                    <LocateFixed />緯度 {coordinates.latitude} / 経度 {coordinates.longitude}
-                  </p>
-                ) : (
-                  <p className="field-help">まだ位置が選ばれていません。</p>
-                )}
+              <label className="field-group location-coordinate-field">
+                <span className="field-label">投稿位置（緯度・経度） <b>必須</b></span>
+                <Input
+                  value={coordinateText}
+                  onChange={(event) => changeCoordinateText(event.target.value)}
+                  inputMode="text"
+                  autoComplete="off"
+                  placeholder="例：35.768867, 139.342782"
+                  aria-invalid={Boolean(coordinateError)}
+                />
+                <span className="field-help">Google Mapsからコピーした座標・URL、北緯／東経、度分秒にも対応します。</span>
+                {coordinates && <span className="coordinate-confirmed"><LocateFixed />地図で選択済み</span>}
+                {coordinateError && <span className="coordinate-error" role="alert">{coordinateError}</span>}
+              </label>
+              <div className="location-picker-actions">
+                <Button type="button" variant="outline" onClick={previewCoordinateText} disabled={!coordinateText.trim()}>
+                  入力した場所を地図で確認
+                </Button>
+                <Button type="button" variant="outline" onClick={onPickLocation}>
+                  <LocateFixed />地図から選ぶ
+                </Button>
               </div>
-              <Button type="button" variant="outline" onClick={onPickLocation}>
-                <LocateFixed />地図から選ぶ
-              </Button>
             </div>
 
             <div className="form-grid">
@@ -322,15 +363,15 @@ export function SubmissionDialog({
               </div>
               <label className="field-group">
                 <span className="field-label">観察日 <b>必須</b></span>
-                <Input name="observedAt" type="date" required defaultValue={new Date().toLocaleDateString("sv-SE")} />
+                <Input name="observedAt" type="date" required value={observedAt} onChange={(event) => setObservedAt(event.target.value)} />
               </label>
               <label className="field-group">
                 <span className="field-label">前回開花した年</span>
-                <Input name="previousBloomYear" type="number" min={1900} max={new Date().getFullYear()} placeholder="不明なら空欄" />
+                <Input name="previousBloomYear" type="number" min={1900} max={currentYear ?? undefined} placeholder="不明なら空欄" />
               </label>
               <label className="field-group">
-                <span className="field-label">株数</span>
-                <Input name="plantCount" type="number" min={1} max={1000} placeholder="おおよそで可" />
+                <span className="field-label">大型の株数</span>
+                <Input name="plantCount" type="number" min={1} max={1000} placeholder="子株を除き、おおよそで可" />
               </label>
               <label className="field-group">
                 <span className="field-label">市区町村 <b>必須</b></span>
