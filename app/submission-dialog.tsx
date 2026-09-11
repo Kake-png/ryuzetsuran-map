@@ -367,7 +367,7 @@ export function SubmissionDialog({
               </label>
               <label className="field-group">
                 <span className="field-label">前回開花した年</span>
-                <Input name="previousBloomYear" type="number" min={1900} max={currentYear ?? undefined} placeholder="不明なら空欄" />
+                <Input name="previousBloomYear" type="number" min={1900} max={currentYear ?? 2100} placeholder="不明なら空欄" />
               </label>
               <label className="field-group">
                 <span className="field-label">大型の株数</span>

@@ -23,7 +23,11 @@ const submissionSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`))),
-    previousBloomYear: z.union([z.literal(""), z.coerce.number().int().min(1900).max(new Date().getUTCFullYear())]),
+    // Do not calculate the upper bound while the module is being bundled.
+    // Some static builds evaluate Date at the Unix epoch, which made the
+    // browser/API reject every year after 1970. The current-year check lives
+    // in superRefine so it runs when the request is actually submitted.
+    previousBloomYear: z.union([z.literal(""), z.coerce.number().int().min(1900)]),
     plantCount: z.union([z.literal(""), z.coerce.number().int().min(1).max(1000)]),
     latitude: z.coerce.number().min(-85).max(85),
     longitude: z.coerce.number().min(-180).max(180),
@@ -39,6 +43,13 @@ const submissionSchema = z
     website: z.string().max(0),
   })
   .superRefine((value, context) => {
+    if (value.previousBloomYear !== "" && value.previousBloomYear > new Date().getUTCFullYear()) {
+      context.addIssue({
+        code: "custom",
+        path: ["previousBloomYear"],
+        message: "前回開花した年は現在年より未来にできません。",
+      });
+    }
     const observation = Date.parse(`${value.observedAt}T00:00:00Z`);
     if (observation > Date.now() + 86_400_000) {
       context.addIssue({
