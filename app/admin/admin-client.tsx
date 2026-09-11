@@ -14,6 +14,7 @@ import {
   Search,
   ShieldCheck,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -39,6 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BLOOM_STATUSES } from "@/lib/agave";
+import { sanitizePhoto } from "@/lib/client-photo";
 import {
   Select,
   SelectContent,
@@ -152,6 +154,8 @@ export function AdminClient() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [editingPin, setEditingPin] = useState<AdminPin | null>(null);
   const [observationDrafts, setObservationDrafts] = useState<Record<string, ObservationDraft>>({});
+  const [observationPhotos, setObservationPhotos] = useState<Record<string, File | null>>({});
+  const [preparingPhotoId, setPreparingPhotoId] = useState<string | null>(null);
   const [newObservation, setNewObservation] = useState<ObservationDraft>({
     bloomStatus: "normal",
     observedAt: new Date().toLocaleDateString("sv-SE"),
@@ -218,6 +222,26 @@ export function AdminClient() {
     }
   }
 
+  async function actForm(form: FormData) {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "写真を追加できませんでした。");
+      await load();
+      return true;
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "写真を追加できませんでした。");
+      setLoading(false);
+      return false;
+    }
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     const completed = deleteTarget.kind === "pin"
@@ -235,6 +259,7 @@ export function AdminClient() {
 
   function openRecordEditor(pin: AdminPin) {
     setEditingPin(pin);
+    setObservationPhotos({});
     setObservationDrafts(Object.fromEntries(pin.observations.map((observation) => [
       observation.public_id,
       {
@@ -250,6 +275,38 @@ export function AdminClient() {
       description: "",
       photoAlt: "",
     });
+  }
+
+  async function selectObservationPhoto(observationId: string, event: React.ChangeEvent<HTMLInputElement>) {
+    const chosen = event.target.files?.[0];
+    if (!chosen) return;
+    setPreparingPhotoId(observationId);
+    setError(null);
+    try {
+      const safePhoto = await sanitizePhoto(chosen);
+      setObservationPhotos((current) => ({ ...current, [observationId]: safePhoto }));
+    } catch (photoError) {
+      setObservationPhotos((current) => ({ ...current, [observationId]: null }));
+      setError(photoError instanceof Error ? photoError.message : "写真を変換できませんでした。");
+    } finally {
+      setPreparingPhotoId(null);
+      event.target.value = "";
+    }
+  }
+
+  async function attachObservationPhoto(observation: AdminObservation) {
+    if (!editingPin) return;
+    const photo = observationPhotos[observation.public_id];
+    const draft = observationDrafts[observation.public_id];
+    if (!photo || !draft) return;
+    const form = new FormData();
+    form.set("action", "attach_observation_photo");
+    form.set("pinId", editingPin.public_id);
+    form.set("observationId", observation.public_id);
+    form.set("photoAlt", draft.photoAlt);
+    form.set("photo", photo);
+    const completed = await actForm(form);
+    if (completed) setEditingPin(null);
   }
 
   function updateDraft(observationId: string, patch: Partial<ObservationDraft>) {
@@ -516,6 +573,28 @@ export function AdminClient() {
                         {observation.photo_url && <label className="admin-field-wide"><span>写真の説明</span><Input value={draft.photoAlt} maxLength={160} onChange={(event) => updateDraft(observation.public_id, { photoAlt: event.target.value })} /></label>}
                       </div>
                       {observation.photo_url && <div className="admin-observation-photo"><img src={observation.photo_url} alt={observation.photo_alt || "投稿写真"} /><Button variant="destructive" size="sm" disabled={loading} onClick={() => setDeleteTarget({ kind: "observation-photo", pinId: editingPin.public_id, observationId: observation.public_id })}><ImageMinus />この写真だけ削除</Button></div>}
+                      {!observation.photo_url && (
+                        <div className="admin-observation-photo-upload">
+                          <div>
+                            <label className="admin-photo-picker">
+                              <Upload aria-hidden="true" />
+                              <span>{preparingPhotoId === observation.public_id ? "写真を変換中…" : observationPhotos[observation.public_id] ? "写真を選び直す" : "写真を選ぶ"}</span>
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+                                disabled={loading || preparingPhotoId === observation.public_id}
+                                onChange={(event) => void selectObservationPhoto(observation.public_id, event)}
+                              />
+                            </label>
+                            {observationPhotos[observation.public_id] && <small>安全な形式への変換が完了しました</small>}
+                          </div>
+                          <label>
+                            <span>写真の説明</span>
+                            <Input value={draft.photoAlt} maxLength={160} onChange={(event) => updateDraft(observation.public_id, { photoAlt: event.target.value })} placeholder="例：公道側から見た株の様子" />
+                          </label>
+                          <Button size="sm" disabled={loading || preparingPhotoId === observation.public_id || !observationPhotos[observation.public_id]} onClick={() => void attachObservationPhoto(observation)}><Upload />この記録に写真を追加</Button>
+                        </div>
+                      )}
                       <div className="admin-observation-actions">
                         <Button variant="outline" size="sm" disabled={loading} onClick={() => void saveObservation(observation)}><Save />この記録を保存</Button>
                         <Button variant="destructive" size="sm" disabled={loading || (observation.visibility === "approved" && editingPin.observations.filter((item) => item.visibility === "approved").length < 2)} onClick={() => setDeleteTarget({ kind: "observation", pinId: editingPin.public_id, observationId: observation.public_id })}><Trash2 />この記録を削除</Button>

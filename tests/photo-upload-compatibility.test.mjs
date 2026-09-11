@@ -12,7 +12,7 @@ test("serves both initial photos and observation photos", async () => {
 });
 
 test("accepts iPhone photos and has a safe JPEG fallback", async () => {
-  const dialog = await readFile(new URL("app/submission-dialog.tsx", root), "utf8");
+  const dialog = await readFile(new URL("lib/client-photo.ts", root), "utf8");
   const security = await readFile(new URL("lib/photo-security.ts", root), "utf8");
   assert.match(dialog, /image\/heic/);
   assert.match(dialog, /canvasBlob\(canvas, "image\/jpeg"/);

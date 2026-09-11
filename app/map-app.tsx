@@ -20,6 +20,7 @@ import {
   Search,
   Share2,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -91,6 +92,8 @@ function StatusLabel({ status }: { status: BloomStatus }) {
 
 export function MapApp() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapSearchInputRef = useRef<HTMLInputElement>(null);
+  const selectedCardRef = useRef<HTMLElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
   const deepLinkedIdRef = useRef<string | null>(null);
@@ -118,6 +121,8 @@ export function MapApp() {
   const [mapSearchResults, setMapSearchResults] = useState<LocationSearchResult[]>([]);
   const [mapSearchLoading, setMapSearchLoading] = useState(false);
   const [mapSearchError, setMapSearchError] = useState<string | null>(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileLegendOpen, setMobileLegendOpen] = useState(false);
 
   async function loadPins() {
     setLoading(true);
@@ -153,6 +158,10 @@ export function MapApp() {
   useEffect(() => {
     void loadPins();
   }, []);
+
+  useEffect(() => {
+    if (mobileSearchOpen) mapSearchInputRef.current?.focus();
+  }, [mobileSearchOpen]);
 
   useEffect(() => {
     const openSubmission = () => setSubmissionOpen(true);
@@ -280,7 +289,7 @@ export function MapApp() {
       button.appendChild(center);
       button.addEventListener("click", (event) => {
         event.stopPropagation();
-        setSelectedId(pin.id);
+        focusPin(pin, true);
       });
       return new maplibregl.Marker({ element: button, anchor: "bottom" })
         .setLngLat([pin.longitude, pin.latitude])
@@ -320,7 +329,7 @@ export function MapApp() {
     };
   }, [pickingLocation]);
 
-  function focusPin(pin: AgavePin) {
+  function focusPin(pin: AgavePin, revealOnMobile = false) {
     mapNavigationRef.current = true;
     setSelectedId(pin.id);
     mapRef.current?.flyTo({
@@ -328,6 +337,11 @@ export function MapApp() {
       zoom: Math.max(mapRef.current.getZoom(), 11),
       essential: true,
     });
+    if (revealOnMobile && window.matchMedia("(max-width: 840px)").matches) {
+      window.setTimeout(() => {
+        selectedCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
+    }
   }
 
   function beginLocationPick() {
@@ -380,6 +394,7 @@ export function MapApp() {
     });
     setMapSearchResults([]);
     setMapSearchError(null);
+    setMobileSearchOpen(false);
   }
 
   function openPhoto(url: string, alt: string | null, attribution: PhotoAttribution | null) {
@@ -392,6 +407,7 @@ export function MapApp() {
 
   return (
     <main className="app-shell">
+      <h1 className="sr-only">アオノリュウゼツランの開花情報・見られる場所</h1>
       <div className="safety-strip">
         <Info aria-hidden="true" />
         <span>見学は公道・公開エリアから。私有地への立ち入りや、路上駐車はしないでください。</span>
@@ -446,7 +462,7 @@ export function MapApp() {
 
           <div className="sidebar-scroll">
             {selected && (
-              <article className="selected-card">
+              <article ref={selectedCardRef} className="selected-card">
                 <div className="selected-card-topline">
                   <StatusLabel status={selectedLatest?.status ?? selected.status} />
                   <span className={ageInDays(selectedLatest?.observedAt ?? selected.observedAt) > 45 ? "freshness is-old" : "freshness"}>
@@ -547,7 +563,7 @@ export function MapApp() {
                   type="button"
                   key={pin.id}
                   className={pin.id === selectedId ? "pin-list-item is-selected" : "pin-list-item"}
-                  onClick={() => focusPin(pin)}
+                  onClick={() => focusPin(pin, true)}
                 >
                   <span className="pin-list-copy">
                     <strong>{pin.title}</strong>
@@ -568,40 +584,67 @@ export function MapApp() {
 
         <section className="map-stage" aria-label="地図">
           <div ref={containerRef} className="map-canvas" />
-          <div className="map-search-panel">
-            <form className="map-search-form" onSubmit={searchMap} role="search">
+          <div className={mobileSearchOpen ? "map-search-panel is-open" : "map-search-panel"}>
+            <button
+              type="button"
+              className="map-search-toggle"
+              aria-expanded={mobileSearchOpen}
+              aria-controls="map-search-content"
+              onClick={() => setMobileSearchOpen(true)}
+            >
               <Search aria-hidden="true" />
-              <label htmlFor="map-place-search" className="sr-only">地名や住所で地図を検索</label>
-              <input
-                id="map-place-search"
-                value={mapSearchQuery}
-                onChange={(event) => {
-                  setMapSearchQuery(event.target.value);
-                  setMapSearchError(null);
-                }}
-                placeholder="市区町村・住所・施設名を検索"
-                maxLength={100}
-              />
-              <button type="submit" disabled={mapSearchLoading}>
-                {mapSearchLoading ? "検索中" : "検索"}
-              </button>
-            </form>
-            {(mapSearchResults.length > 0 || mapSearchError) && (
-              <div className="map-search-results" aria-live="polite">
-                {mapSearchError && <p>{mapSearchError}</p>}
-                {mapSearchResults.map((result) => (
-                  <button
-                    type="button"
-                    key={`${result.latitude}-${result.longitude}-${result.name}`}
-                    onClick={() => showSearchResult(result)}
-                  >
-                    <MapPin aria-hidden="true" />
-                    <span>{result.name}</span>
+              場所を検索
+            </button>
+            <div id="map-search-content" className="map-search-content">
+              <div className="map-search-form-row">
+                <form className="map-search-form" onSubmit={searchMap} role="search">
+                  <Search aria-hidden="true" />
+                  <label htmlFor="map-place-search" className="sr-only">地名や住所で地図を検索</label>
+                  <input
+                    ref={mapSearchInputRef}
+                    id="map-place-search"
+                    value={mapSearchQuery}
+                    onChange={(event) => {
+                      setMapSearchQuery(event.target.value);
+                      setMapSearchError(null);
+                    }}
+                    placeholder="市区町村・住所・施設名を検索"
+                    maxLength={100}
+                  />
+                  <button type="submit" disabled={mapSearchLoading}>
+                    {mapSearchLoading ? "検索中" : "検索"}
                   </button>
-                ))}
-                {mapSearchResults.length > 0 && <small>検索データ © OpenStreetMap contributors</small>}
+                </form>
+                <button
+                  type="button"
+                  className="map-search-close"
+                  aria-label="場所の検索を閉じる"
+                  onClick={() => {
+                    setMobileSearchOpen(false);
+                    setMapSearchResults([]);
+                    setMapSearchError(null);
+                  }}
+                >
+                  <X aria-hidden="true" />
+                </button>
               </div>
-            )}
+              {(mapSearchResults.length > 0 || mapSearchError) && (
+                <div className="map-search-results" aria-live="polite">
+                  {mapSearchError && <p>{mapSearchError}</p>}
+                  {mapSearchResults.map((result) => (
+                    <button
+                      type="button"
+                      key={`${result.latitude}-${result.longitude}-${result.name}`}
+                      onClick={() => showSearchResult(result)}
+                    >
+                      <MapPin aria-hidden="true" />
+                      <span>{result.name}</span>
+                    </button>
+                  ))}
+                  {mapSearchResults.length > 0 && <small>検索データ © OpenStreetMap contributors</small>}
+                </div>
+              )}
+            </div>
           </div>
           <div className="map-filter-mobile" aria-label="開花状況で絞り込む">
             <button
@@ -635,12 +678,24 @@ export function MapApp() {
               <span>一覧から情報を見ることはできます。</span>
             </div>
           )}
-          <div className="map-legend" aria-label="凡例">
-            {Object.entries(BLOOM_STATUSES).map(([value, item]) => (
-              <span key={value}>
-                <i style={{ background: item.color }} />{item.label}
-              </span>
-            ))}
+          <div className={mobileLegendOpen ? "map-legend is-open" : "map-legend"} aria-label="凡例">
+            <button
+              type="button"
+              className="map-legend-toggle"
+              aria-expanded={mobileLegendOpen}
+              aria-controls="map-legend-items"
+              onClick={() => setMobileLegendOpen((open) => !open)}
+            >
+              <Info aria-hidden="true" />
+              {mobileLegendOpen ? "閉じる" : "凡例"}
+            </button>
+            <div id="map-legend-items" className="map-legend-items">
+              {Object.entries(BLOOM_STATUSES).map(([value, item]) => (
+                <span key={value}>
+                  <i style={{ background: item.color }} />{item.label}
+                </span>
+              ))}
+            </div>
           </div>
         </section>
       </div>

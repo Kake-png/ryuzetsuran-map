@@ -62,7 +62,7 @@ export async function generateMetadata({ params }: SpotPageProps): Promise<Metad
   const description = `${pin.municipality}で記録されたアオノリュウゼツラン。現在の状態は「${status}」、最終観察日は${formatDate(pin.observedAt)}です。`;
 
   return {
-    title: `${pin.municipality}のアオノリュウゼツラン`,
+    title: `${pin.municipality}のアオノリュウゼツラン｜開花状況・観察記録`,
     description,
     openGraph: { title: pin.title, description, type: "article" },
     twitter: { card: "summary", title: pin.title, description },

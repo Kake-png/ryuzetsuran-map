@@ -4,8 +4,8 @@ const structuredData = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "リュウゼツランマップ",
-  alternateName: "アオノリュウゼツラン開花マップ",
-  description: "アオノリュウゼツランの開花中・開花前・枯死後の記録を、観察履歴と地図で共有するフィールドアトラス。",
+  alternateName: "アオノリュウゼツラン開花・観察マップ",
+  description: "リュウゼツラン（アオノリュウゼツラン）の開花情報・見られる場所・観察履歴を地図で共有するサイト。",
   inLanguage: "ja-JP",
 };
 

@@ -11,8 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { BLOOM_STATUSES, type AgavePin } from "@/lib/agave";
-
-import { sanitizePhoto } from "./submission-dialog";
+import { sanitizePhoto } from "@/lib/client-photo";
 
 export function ObservationDialog({
   open,

@@ -11,8 +11,8 @@ import {
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "観察帖と小さな多肉植物入門",
-  description: "アオノリュウゼツランを安全に観察する方法と、小さな鉢で楽しめる多肉植物の入門案内。",
+  title: "アオノリュウゼツラン観察帖｜安全な見学と記録",
+  description: "アオノリュウゼツランの開花を安全に観察し、日時・状態・写真を記録するための案内。小さな多肉植物の入門も掲載しています。",
 };
 
 const fieldChapters = [

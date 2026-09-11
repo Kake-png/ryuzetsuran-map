@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { sanitizeUploadedPhoto } from "@/lib/photo-security";
 import {
   assertAdmin,
   assertSameOrigin,
@@ -7,6 +8,7 @@ import {
   errorResponse,
   HttpError,
   publicCode,
+  randomToken,
   runtimeEnv,
 } from "@/lib/server-security";
 
@@ -49,6 +51,13 @@ const actionSchema = z.discriminatedUnion("action", [
     observationId: z.string().trim(),
   }),
 ]);
+
+const adminPhotoSchema = z.object({
+  action: z.literal("attach_observation_photo"),
+  pinId: z.string().trim().min(1),
+  observationId: z.string().trim().min(1),
+  photoAlt: z.string().trim().max(160),
+});
 
 const filterSchema = z.object({
   q: z.string().trim().max(80).default(""),
@@ -241,14 +250,83 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let uploadedKey: string | null = null;
+  let uploadedPhotoTarget: { pinId: string; observationId: string } | null = null;
   try {
     assertSameOrigin(request);
     await enforceRateLimit(request, "admin-access", 80);
     assertAdmin(request);
-    const parsed = actionSchema.safeParse(await request.json());
-    if (!parsed.success) throw new HttpError(400, "管理操作の内容が不正です。");
     const db = runtimeEnv().DB;
     if (!db) throw new HttpError(503, "データベースを利用できません。");
+
+    if (request.headers.get("content-type")?.toLowerCase().startsWith("multipart/form-data")) {
+      const contentLength = Number(request.headers.get("content-length"));
+      if (Number.isFinite(contentLength) && contentLength > 4_000_000) {
+        throw new HttpError(413, "写真データが大きすぎます。もう一度写真を選び直してください。");
+      }
+      const form = await request.formData();
+      const parsedPhoto = adminPhotoSchema.safeParse({
+        action: form.get("action"),
+        pinId: form.get("pinId"),
+        observationId: form.get("observationId"),
+        photoAlt: form.get("photoAlt") ?? "",
+      });
+      if (!parsedPhoto.success) throw new HttpError(400, "写真を追加する対象が不正です。");
+
+      const existing = await db.prepare(
+        "SELECT photo_key FROM observations WHERE public_id = ? AND agave_public_id = ? LIMIT 1",
+      ).bind(parsedPhoto.data.observationId, parsedPhoto.data.pinId).first<{ photo_key: string | null }>();
+      if (!existing) throw new HttpError(404, "対象の観察記録が見つかりません。");
+      if (existing.photo_key) {
+        throw new HttpError(409, "この観察記録にはすでに写真があります。差し替える場合は先に現在の写真を削除してください。");
+      }
+
+      const photo = form.get("photo");
+      if (!photo || typeof photo === "string" || photo.size === 0) {
+        throw new HttpError(400, "追加する写真を選んでください。");
+      }
+      if (!["image/webp", "image/jpeg"].includes(photo.type) || photo.size > 3_000_000) {
+        throw new HttpError(400, "写真は変換後3MB以下のWebPまたはJPEG画像にしてください。");
+      }
+      const bucket = runtimeEnv().BUCKET;
+      if (!bucket) throw new HttpError(503, "写真の保存機能を一時的に利用できません。");
+      const sanitized = sanitizeUploadedPhoto(new Uint8Array(await photo.arrayBuffer()), photo.type);
+      uploadedKey = `observations/${parsedPhoto.data.pinId}/${randomToken(18)}.${sanitized.extension}`;
+      uploadedPhotoTarget = {
+        pinId: parsedPhoto.data.pinId,
+        observationId: parsedPhoto.data.observationId,
+      };
+      await bucket.put(uploadedKey, sanitized.bytes, {
+        httpMetadata: { contentType: sanitized.contentType },
+        customMetadata: {
+          pinId: parsedPhoto.data.pinId,
+          observationId: parsedPhoto.data.observationId,
+        },
+      });
+
+      const updated = await db.prepare(
+        `UPDATE observations
+         SET photo_key = ?, photo_alt = ?, photo_author = NULL,
+             photo_license = NULL, photo_license_url = NULL,
+             photo_source_url = NULL, photo_changes = NULL
+         WHERE public_id = ? AND agave_public_id = ? AND photo_key IS NULL`,
+      ).bind(
+        uploadedKey,
+        parsedPhoto.data.photoAlt || null,
+        parsedPhoto.data.observationId,
+        parsedPhoto.data.pinId,
+      ).run();
+      if (!updated.meta.changes) {
+        throw new HttpError(409, "写真の追加中に記録が更新されました。管理画面を読み直してください。");
+      }
+      await syncPinFromLatestObservation(db, parsedPhoto.data.pinId);
+      uploadedKey = null;
+      uploadedPhotoTarget = null;
+      return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    const parsed = actionSchema.safeParse(await request.json());
+    if (!parsed.success) throw new HttpError(400, "管理操作の内容が不正です。");
 
     if (parsed.data.action === "create_observation") {
       const pin = await db.prepare("SELECT public_id FROM agaves WHERE public_id = ? LIMIT 1")
@@ -438,6 +516,34 @@ export async function POST(request: Request) {
 
     return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (uploadedKey) {
+      try {
+        if (uploadedPhotoTarget) {
+          const db = runtimeEnv().DB;
+          if (db) {
+            await db.prepare(
+              `UPDATE observations
+               SET photo_key = NULL, photo_alt = NULL, photo_author = NULL,
+                   photo_license = NULL, photo_license_url = NULL,
+                   photo_source_url = NULL, photo_changes = NULL
+               WHERE public_id = ? AND agave_public_id = ? AND photo_key = ?`,
+            ).bind(
+              uploadedPhotoTarget.observationId,
+              uploadedPhotoTarget.pinId,
+              uploadedKey,
+            ).run();
+            await syncPinFromLatestObservation(db, uploadedPhotoTarget.pinId);
+          }
+        }
+      } catch (cleanupError) {
+        console.error("Failed admin photo database cleanup", cleanupError);
+      }
+      try {
+        await runtimeEnv().BUCKET?.delete(uploadedKey);
+      } catch (cleanupError) {
+        console.error("Failed admin photo object cleanup", cleanupError);
+      }
+    }
     return errorResponse(error);
   }
 }

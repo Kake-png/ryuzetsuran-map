@@ -8,10 +8,10 @@ import { ScrollReset } from "./scroll-reset";
 
 export const metadata: Metadata = {
   title: {
-    default: "リュウゼツランマップ｜アオノリュウゼツラン開花マップ",
+    default: "アオノリュウゼツランの開花情報・見られる場所｜リュウゼツランマップ",
     template: "%s | リュウゼツランマップ",
   },
-  description: "アオノリュウゼツランの開花中・開花前・枯死後の記録を、観察履歴と地図で共有するフィールドアトラス。",
+  description: "リュウゼツラン（アオノリュウゼツラン）の開花状況・見られる場所・観察履歴を地図で探せるサイト。開花中、花茎が伸びている株、枯死後・子株の記録を掲載しています。",
   applicationName: "リュウゼツランマップ",
   authors: [{ name: "リュウゼツランマップ運営" }],
   category: "nature",
@@ -19,13 +19,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ja_JP",
     siteName: "リュウゼツランマップ",
-    title: "リュウゼツランマップ｜アオノリュウゼツラン開花マップ",
-    description: "アオノリュウゼツランの開花中・開花前・枯死後の記録を、観察履歴と地図で共有するフィールドアトラス。",
+    title: "アオノリュウゼツランの開花情報・見られる場所｜リュウゼツランマップ",
+    description: "リュウゼツラン（アオノリュウゼツラン）の開花状況・見られる場所・観察履歴を地図で探せるサイト。",
   },
   twitter: {
     card: "summary",
-    title: "リュウゼツランマップ｜アオノリュウゼツラン開花マップ",
-    description: "アオノリュウゼツランの開花記録を、観察履歴と地図で共有するフィールドアトラス。",
+    title: "アオノリュウゼツランの開花情報・見られる場所｜リュウゼツランマップ",
+    description: "リュウゼツラン（アオノリュウゼツラン）の開花状況と観察記録を地図で探せるサイト。",
   },
   robots: {
     index: true,
