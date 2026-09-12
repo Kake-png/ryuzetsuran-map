@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { sanitizeUploadedPhoto } from "@/lib/photo-security";
+import { cleanLocationName, formatAgaveTitle } from "@/lib/location-title";
 import {
   assertAdmin,
   assertSameOrigin,
@@ -16,6 +17,11 @@ const bloomStatusSchema = z.enum(["blooming", "flower_stalk", "likely", "normal"
 const observationDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 const actionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("update_location_name"),
+    pinId: z.string().trim(),
+    locationName: z.string().trim().max(60),
+  }),
   z.object({
     action: z.enum(["approve", "hide", "reject", "delete", "undo_latest_observation"]),
     pinId: z.string().trim(),
@@ -62,7 +68,7 @@ const adminPhotoSchema = z.object({
 const filterSchema = z.object({
   q: z.string().trim().max(80).default(""),
   requestStatus: z.enum(["all", "pending", "resolved"]).default("pending"),
-  reason: z.enum(["all", "private_property", "no_permission", "dangerous", "wrong_info", "duplicate", "other"]).default("all"),
+  reason: z.enum(["all", "private_property", "no_permission", "dangerous", "location_name", "wrong_info", "duplicate", "other"]).default("all"),
   pinVisibility: z.enum(["all", "approved", "pending", "hidden", "rejected"]).default("all"),
 });
 
@@ -181,11 +187,11 @@ export async function GET(request: Request) {
                   (SELECT COUNT(*) FROM observations o WHERE o.agave_public_id = agaves.public_id AND o.visibility = 'approved') AS observation_count
            FROM agaves
            WHERE (? = 'all' OR visibility = ?)
-             AND (? = '' OR public_id LIKE ? OR title LIKE ? OR municipality LIKE ?)
+             AND (? = '' OR public_id LIKE ? OR title LIKE ? OR municipality LIKE ? OR location_name LIKE ?)
            ORDER BY created_at DESC
            LIMIT 200`,
         )
-        .bind(filters.pinVisibility, filters.pinVisibility, filters.q, like, like, like)
+        .bind(filters.pinVisibility, filters.pinVisibility, filters.q, like, like, like, like)
         .all(),
       db
         .prepare(
@@ -328,7 +334,16 @@ export async function POST(request: Request) {
     const parsed = actionSchema.safeParse(await request.json());
     if (!parsed.success) throw new HttpError(400, "管理操作の内容が不正です。");
 
-    if (parsed.data.action === "create_observation") {
+    if (parsed.data.action === "update_location_name") {
+      const pin = await db.prepare("SELECT municipality FROM agaves WHERE public_id = ? LIMIT 1")
+        .bind(parsed.data.pinId).first<{ municipality: string }>();
+      if (!pin) throw new HttpError(404, "対象のピンが見つかりません。");
+      const locationName = cleanLocationName(parsed.data.locationName) || pin.municipality;
+      const title = formatAgaveTitle(locationName, pin.municipality);
+      await db.prepare(
+        "UPDATE agaves SET location_name = ?, title = ?, updated_at = CURRENT_TIMESTAMP WHERE public_id = ?",
+      ).bind(locationName, title, parsed.data.pinId).run();
+    } else if (parsed.data.action === "create_observation") {
       const pin = await db.prepare("SELECT public_id FROM agaves WHERE public_id = ? LIMIT 1")
         .bind(parsed.data.pinId).first<{ public_id: string }>();
       if (!pin) throw new HttpError(404, "対象のピンが見つかりません。");

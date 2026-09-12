@@ -60,12 +60,15 @@ export async function generateMetadata({ params }: SpotPageProps): Promise<Metad
   const status = BLOOM_STATUSES[pin.status].label;
   const privateLocation = pin.locationType === "private_authorized";
   const description = `${pin.municipality}で記録されたアオノリュウゼツラン。現在の状態は「${status}」、最終観察日は${formatDate(pin.observedAt)}です。`;
+  const locationTitle = pin.title.startsWith(pin.municipality)
+    ? pin.title
+    : `${pin.municipality}｜${pin.title}`;
 
   return {
-    title: `${pin.municipality}のアオノリュウゼツラン｜開花状況・観察記録`,
+    title: `${locationTitle}｜開花状況・観察記録`,
     description,
-    openGraph: { title: pin.title, description, type: "article" },
-    twitter: { card: "summary", title: pin.title, description },
+    openGraph: { title: locationTitle, description, type: "article" },
+    twitter: { card: "summary", title: locationTitle, description },
     robots: privateLocation
       ? { index: false, follow: false, noarchive: true }
       : { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large" } },

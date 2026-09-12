@@ -17,7 +17,7 @@ import {
 const requestSchema = z.object({
   pinId: z.string().trim().toUpperCase().regex(/^AGV-[A-Z0-9_-]{6,20}$/),
   kind: z.enum(["correction", "removal", "safety"]),
-  reason: z.enum(["private_property", "no_permission", "dangerous", "wrong_info", "duplicate", "other"]),
+  reason: z.enum(["private_property", "no_permission", "dangerous", "location_name", "wrong_info", "duplicate", "other"]),
   details: z.string().trim().min(10).max(1600),
   contactEmail: z.union([z.literal(""), z.string().email().max(200)]),
   managementKey: z.string().trim().max(200),

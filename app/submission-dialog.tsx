@@ -34,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { BLOOM_STATUSES, LOCATION_TYPES } from "@/lib/agave";
 import { sanitizePhoto } from "@/lib/client-photo";
 import { formatCoordinates, parseCoordinates } from "@/lib/coordinates";
+import { formatAgaveTitle } from "@/lib/location-title";
 
 type Coordinates = { latitude: number; longitude: number } | null;
 
@@ -63,6 +64,7 @@ export function SubmissionDialog({
 }) {
   const [bloomStatus, setBloomStatus] = useState("normal");
   const [municipality, setMunicipality] = useState("");
+  const [locationName, setLocationName] = useState("");
   const [municipalityLoading, setMunicipalityLoading] = useState(false);
   const [locationType, setLocationType] = useState("public_space");
   const [submitterRelation, setSubmitterRelation] = useState("observer");
@@ -285,6 +287,20 @@ export function SubmissionDialog({
                 <span className="field-label">市区町村 <b>必須</b></span>
                 <Input name="municipality" required maxLength={80} value={municipality} onChange={(event) => setMunicipality(event.target.value)} placeholder={municipalityLoading ? "地図から取得しています…" : "例：千葉市美浜区"} />
                 <span className="field-help">地図から自動入力します。境界付近などで違う場合は直せます。</span>
+              </label>
+              <label className="field-group field-wide">
+                <span className="field-label">表示用の目印（任意）</span>
+                <Input
+                  name="locationName"
+                  maxLength={60}
+                  value={locationName}
+                  onChange={(event) => setLocationName(event.target.value)}
+                  placeholder="例：みずほエコパーク北側、○○駅近く、△△川沿い"
+                />
+                <span className="field-help">個人宅名、表札、番地、住人を特定できる表現は書かないでください。空欄の場合は市区町村名を使います。</span>
+                {(municipality.trim() || locationName.trim()) && (
+                  <span className="location-title-preview">表示名：{formatAgaveTitle(locationName, municipality)}</span>
+                )}
               </label>
               <div className="field-group field-wide">
                 <span className="field-label">場所の種類 <b>必須</b></span>

@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { BLOOM_STATUSES } from "@/lib/agave";
 import { sanitizePhoto } from "@/lib/client-photo";
+import { formatAgaveTitle } from "@/lib/location-title";
 import {
   Select,
   SelectContent,
@@ -107,6 +108,7 @@ const reasonLabels: Record<string, string> = {
   private_property: "私有地・生活への影響",
   no_permission: "私有地への掲載に関する懸念",
   dangerous: "見学に危険がある",
+  location_name: "地点名を変更したい",
   wrong_info: "内容が間違っている",
   duplicate: "重複している",
   other: "その他",
@@ -153,6 +155,7 @@ export function AdminClient() {
   const [pinVisibility, setPinVisibility] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [editingPin, setEditingPin] = useState<AdminPin | null>(null);
+  const [locationNameDraft, setLocationNameDraft] = useState("");
   const [observationDrafts, setObservationDrafts] = useState<Record<string, ObservationDraft>>({});
   const [observationPhotos, setObservationPhotos] = useState<Record<string, File | null>>({});
   const [preparingPhotoId, setPreparingPhotoId] = useState<string | null>(null);
@@ -259,6 +262,7 @@ export function AdminClient() {
 
   function openRecordEditor(pin: AdminPin) {
     setEditingPin(pin);
+    setLocationNameDraft(pin.location_name);
     setObservationPhotos({});
     setObservationDrafts(Object.fromEntries(pin.observations.map((observation) => [
       observation.public_id,
@@ -328,6 +332,16 @@ export function AdminClient() {
       observedAt: draft.observedAt,
       description: draft.description,
       photoAlt: draft.photoAlt,
+    });
+    if (completed) setEditingPin(null);
+  }
+
+  async function saveLocationName() {
+    if (!editingPin) return;
+    const completed = await act({
+      action: "update_location_name",
+      pinId: editingPin.public_id,
+      locationName: locationNameDraft,
     });
     if (completed) setEditingPin(null);
   }
@@ -468,7 +482,7 @@ export function AdminClient() {
                     </Badge>
                   </div>
                   <h3>{pin.title}</h3>
-                  <p>{pin.location_name}<br /><small>{pin.municipality}</small></p>
+                  <p>表示の目印：{pin.location_name}<br /><small>市区町村：{pin.municipality}</small></p>
                   {pin.photo_url && <img src={pin.photo_url} alt={pin.photo_alt || "投稿写真"} />}
                   <dl>
                     <div><dt>ピンID</dt><dd>{pin.public_id}</dd></div>
@@ -484,7 +498,7 @@ export function AdminClient() {
                   >位置を別地図で確認 <ExternalLink /></a>
                   <div className="admin-actions">
                     <Button variant="outline" disabled={loading} onClick={() => openRecordEditor(pin)}>
-                      <FilePenLine />記録を編集
+                      <FilePenLine />地点・記録を編集
                     </Button>
                     {pin.observation_count > 1 && (
                       <Button variant="outline" disabled={loading} onClick={() => void act({ action: "undo_latest_observation", pinId: pin.public_id })}>
@@ -538,11 +552,29 @@ export function AdminClient() {
         <DialogContent className="admin-record-dialog sm:max-w-3xl">
           <DialogHeader>
             <p className="dialog-kicker">OBSERVATION EDITOR</p>
-            <DialogTitle>{editingPin?.title} の記録</DialogTitle>
-            <DialogDescription>観察記録を訂正すると、もっとも新しい記録が地図の現在状態にも反映されます。</DialogDescription>
+            <DialogTitle>{editingPin?.title} の編集</DialogTitle>
+            <DialogDescription>地点の表示名と観察記録を編集できます。市区町村は検索向けの地域情報として別に保持します。</DialogDescription>
           </DialogHeader>
           {editingPin && (
             <div className="admin-record-editor">
+              <section className="admin-location-editor">
+                <div>
+                  <p className="eyebrow">LOCATION NAME</p>
+                  <h3>地点の表示名</h3>
+                </div>
+                <label>
+                  <span>表示用の目印</span>
+                  <Input
+                    value={locationNameDraft}
+                    maxLength={60}
+                    onChange={(event) => setLocationNameDraft(event.target.value)}
+                    placeholder="例：みずほエコパーク北側、○○駅近く、△△川沿い"
+                  />
+                </label>
+                <p className="location-title-preview">表示名：{formatAgaveTitle(locationNameDraft, editingPin.municipality)}</p>
+                <small>個人宅名、表札、番地などは使わないでください。空欄で市区町村名に戻します。</small>
+                <Button disabled={loading} onClick={() => void saveLocationName()}><Save />表示名を保存</Button>
+              </section>
               <section className="admin-new-observation">
                 <div>
                   <p className="eyebrow">ADD BY ADMIN</p>

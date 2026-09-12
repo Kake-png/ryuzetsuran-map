@@ -11,6 +11,7 @@ test("publishes stable URLs only for approved locations", async () => {
   assert.match(page, /pin\.locationType === "private_authorized"/);
   assert.match(page, /index: false, follow: false, noarchive: true/);
   assert.match(page, /<ShareButton title=\{pin\.title\}/);
+  assert.match(page, /const locationTitle = pin\.title\.startsWith\(pin\.municipality\)/);
   assert.match(map, /href=\{`\/spots\/\$\{encodeURIComponent\(selected\.id\)\}`\}/);
   assert.match(map, /new URLSearchParams\(window\.location\.search\)\.get\("spot"\)/);
 });

@@ -11,6 +11,8 @@ test("restores ended pins and lets an admin maintain individual observations", a
   assert.match(adminApi, /action: z\.literal\("delete_observation_photo"\)/);
   assert.match(adminApi, /action: z\.literal\("delete_observation"\)/);
   assert.match(adminApi, /action: z\.literal\("attach_observation_photo"\)/);
+  assert.match(adminApi, /action: z\.literal\("update_location_name"\)/);
+  assert.match(adminApi, /SET location_name = \?, title = \?/);
   assert.match(adminApi, /sanitizeUploadedPhoto/);
   assert.match(adminApi, /AND photo_key IS NULL/);
   assert.match(adminApi, /DELETE FROM observations WHERE public_id = \? AND agave_public_id = \?/);
@@ -20,6 +22,8 @@ test("restores ended pins and lets an admin maintain individual observations", a
   assert.match(adminUi, /この記録を削除/);
   assert.match(adminUi, /観察記録を追加/);
   assert.match(adminUi, /この記録に写真を追加/);
+  assert.match(adminUi, /地点・記録を編集/);
+  assert.match(adminUi, /表示名を保存/);
 });
 
 test("protects admin photo uploads before reading or writing data", async () => {

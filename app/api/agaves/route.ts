@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { DEMO_PINS, type PhotoAttribution } from "@/lib/agave";
+import { cleanLocationName, formatAgaveTitle } from "@/lib/location-title";
 import { sanitizeUploadedPhoto } from "@/lib/photo-security";
 import {
   assertHumanTiming,
@@ -32,6 +33,7 @@ const submissionSchema = z
     latitude: z.coerce.number().min(-85).max(85),
     longitude: z.coerce.number().min(-180).max(180),
     municipality: z.string().trim().min(2).max(80),
+    locationName: z.string().trim().max(60).default(""),
     locationType: z.enum(["public_space", "visitor_facility", "private_authorized"]),
     accessNote: z.string().trim().max(500),
     description: z.string().trim().max(1200),
@@ -283,7 +285,8 @@ export async function POST(request: Request) {
     }
 
     const value = parsed.data;
-    const title = `${value.municipality}のアオノリュウゼツラン`;
+    const locationName = cleanLocationName(value.locationName) || value.municipality;
+    const title = formatAgaveTitle(locationName, value.municipality);
     await db.batch([
       db.prepare(
         `INSERT INTO agaves (
@@ -305,7 +308,7 @@ export async function POST(request: Request) {
         latitude,
         longitude,
         value.municipality,
-        value.municipality,
+        locationName,
         value.locationType,
         value.accessNote,
         value.description,

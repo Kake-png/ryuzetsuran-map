@@ -153,6 +153,7 @@ export function ChangeRequestDialog({
                     <SelectItem value="private_property">私有地・生活への影響</SelectItem>
                     <SelectItem value="no_permission">私有地への掲載に関する懸念</SelectItem>
                     <SelectItem value="dangerous">見学に危険がある</SelectItem>
+                    <SelectItem value="location_name">地点名を変更したい</SelectItem>
                     <SelectItem value="wrong_info">内容が間違っている</SelectItem>
                     <SelectItem value="duplicate">同じピンが重複している</SelectItem>
                     <SelectItem value="other">その他</SelectItem>
