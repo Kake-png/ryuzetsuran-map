@@ -1637,6 +1637,21 @@ a:focus-visible {
   font-size: 0.8rem;
 }
 
+.map-error button {
+  border: 1px solid #8a733d;
+  background: #fffdf4;
+  padding: 8px 12px;
+  color: #5d4a20;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.map-error button:hover {
+  background: #f5ebc9;
+}
+
 /* Forms */
 .form-dialog,
 .rules-dialog {

@@ -100,6 +100,7 @@ export function MapApp() {
   const mapNavigationRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
+  const [mapAttempt, setMapAttempt] = useState(0);
   const [pins, setPins] = useState<AgavePin[]>([]);
   const [loading, setLoading] = useState(true);
   const [demoMode, setDemoMode] = useState(false);
@@ -197,6 +198,8 @@ export function MapApp() {
         "bottom-left",
       );
       map.on("load", () => {
+        if (timeout !== null) window.clearTimeout(timeout);
+        timeout = null;
         setMapReady(true);
         setMapFailed(false);
         map?.getCanvas().addEventListener("pointerdown", () => {
@@ -218,8 +221,10 @@ export function MapApp() {
         }
       });
       timeout = window.setTimeout(() => {
+        // `loaded()` is briefly false while MapLibre fetches tiles during
+        // navigation. Only use this guard for the initial style load.
         if (!map?.loaded()) setMapFailed(true);
-      }, 12_000);
+      }, 30_000);
       mapRef.current = map;
     } catch (error) {
       console.error("Map initialization failed", error);
@@ -230,7 +235,7 @@ export function MapApp() {
       map?.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [mapAttempt]);
 
   const visiblePins = useMemo(() => {
     const live = pins.filter((pin) => pin.status !== "dead");
@@ -675,6 +680,7 @@ export function MapApp() {
               <AlertTriangle />
               <strong>地図を読み込めませんでした</strong>
               <span>一覧から情報を見ることはできます。</span>
+              <button type="button" onClick={() => { setMapFailed(false); setMapAttempt((attempt) => attempt + 1); }}>地図を再読み込み</button>
             </div>
           )}
           <div className={mobileLegendOpen ? "map-legend is-open" : "map-legend"} aria-label="凡例">
