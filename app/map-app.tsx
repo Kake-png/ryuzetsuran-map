@@ -351,9 +351,8 @@ export function MapApp() {
 
   function previewLocation(coordinates: { latitude: number; longitude: number }) {
     mapNavigationRef.current = true;
-    setPickedLocation(null);
-    setSubmissionOpen(false);
-    setPickingLocation(true);
+    setPickedLocation(coordinates);
+    setPickingLocation(false);
     mapRef.current?.flyTo({
       center: [coordinates.longitude, coordinates.latitude],
       zoom: Math.max(mapRef.current.getZoom(), 15),

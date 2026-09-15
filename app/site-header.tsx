@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, BookOpenText, Flower2, Plus, ShieldCheck } from "lucide-react";
+import { ArrowLeft, BookOpenText, Flower2, Plus, ShieldCheck, Sprout } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -25,6 +25,7 @@ export function SiteHeader() {
         {onMap ? (
           <>
             <Link href="/guide" className="header-guide-link" aria-label="観察・育成帖を見る"><BookOpenText aria-hidden="true" /><span>観察・育成帖</span></Link>
+            <Link href="/grow" className="header-guide-link" aria-label="植物と育成用品を見る"><Sprout aria-hidden="true" /><span>植物と育成用品</span></Link>
             <Button variant="ghost" onClick={() => window.dispatchEvent(new Event("ryuzetsuran:rules"))}>
               <ShieldCheck /><span className="desktop-label">掲載と見学のルール</span>
             </Button>

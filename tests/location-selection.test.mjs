@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { formatCoordinates, parseCoordinates } from "../lib/coordinates.ts";
+import { readFile } from "node:fs/promises";
 
 test("Google Mapsで使われる座標形式を読み取れる", () => {
   const expected = { latitude: 35.681236, longitude: 139.767125 };
@@ -43,4 +44,16 @@ test("地図で確定した座標は統一形式で表示する", () => {
     formatCoordinates({ latitude: 35.7688674, longitude: 139.3427824 }),
     "35.768867, 139.342782",
   );
+});
+
+test("座標入力をボタンなしで自動反映し、手入力した市区町村を保護する", async () => {
+  const submission = await readFile(new URL("../app/submission-dialog.tsx", import.meta.url), "utf8");
+  const map = await readFile(new URL("../app/map-app.tsx", import.meta.url), "utf8");
+
+  assert.match(submission, /window\.setTimeout\(\(\) => \{/);
+  assert.match(submission, /onPreviewLocation\(parsed\)/);
+  assert.doesNotMatch(submission, /入力した場所を地図で確認/);
+  assert.match(submission, /municipalityEditedRef\.current/);
+  assert.match(submission, /勝手に上書きしません/);
+  assert.match(map, /setPickedLocation\(coordinates\)/);
 });

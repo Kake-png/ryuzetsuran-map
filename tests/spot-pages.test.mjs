@@ -37,6 +37,8 @@ test("uses one shared header and footer and keeps full history on spot pages", a
   assert.match(layout, /<SiteFooter \/>/);
   assert.match(header, /投稿する/);
   assert.match(header, /地図に戻る/);
+  assert.match(header, /href="\/grow"/);
+  assert.match(header, /植物と育成用品/);
   assert.match(map, /selected\.observations\.find\(\(observation\) => observation\.photoUrl\)/);
   assert.doesNotMatch(map, /className="observation-list"/);
   assert.match(spot, /history\.map\(\(observation\)/);

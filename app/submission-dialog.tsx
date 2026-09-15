@@ -9,7 +9,7 @@ import {
   ShieldAlert,
   Upload,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -81,11 +81,20 @@ export function SubmissionDialog({
   const [currentYear, setCurrentYear] = useState<number | null>(null);
   const [coordinateText, setCoordinateText] = useState("");
   const [coordinateError, setCoordinateError] = useState<string | null>(null);
+  const [municipalityManuallyEdited, setMunicipalityManuallyEdited] = useState(false);
+  const coordinateInputTimer = useRef<number | null>(null);
+  const coordinateSource = useRef<"map" | "text">("map");
+  const municipalityEditedRef = useRef(false);
+  const municipalityValueRef = useRef("");
 
   useEffect(() => {
     const now = new Date();
     setObservedAt(now.toLocaleDateString("sv-SE"));
     setCurrentYear(now.getFullYear());
+  }, []);
+
+  useEffect(() => () => {
+    if (coordinateInputTimer.current !== null) window.clearTimeout(coordinateInputTimer.current);
   }, []);
 
   useEffect(() => {
@@ -100,14 +109,21 @@ export function SubmissionDialog({
 
   useEffect(() => {
     if (!coordinates) return;
-    setCoordinateText(formatCoordinates(coordinates));
+    if (coordinateSource.current === "map") {
+      setCoordinateText(formatCoordinates(coordinates));
+    }
     setCoordinateError(null);
     const controller = new AbortController();
     setMunicipalityLoading(true);
     fetch(`/api/municipality?lat=${coordinates.latitude}&lon=${coordinates.longitude}`, { signal: controller.signal })
       .then(async (response) => {
         const data = await response.json() as { municipality?: string };
-        if (response.ok && data.municipality) setMunicipality(data.municipality);
+        if (response.ok && data.municipality && (!municipalityEditedRef.current || !municipalityValueRef.current.trim())) {
+          municipalityValueRef.current = data.municipality;
+          municipalityEditedRef.current = false;
+          setMunicipality(data.municipality);
+          setMunicipalityManuallyEdited(false);
+        }
       })
       .catch(() => undefined)
       .finally(() => setMunicipalityLoading(false));
@@ -115,18 +131,35 @@ export function SubmissionDialog({
   }, [coordinates]);
 
   function changeCoordinateText(value: string) {
+    coordinateSource.current = "text";
     setCoordinateText(value);
     setCoordinateError(null);
     if (coordinates) onClearLocation();
+    if (coordinateInputTimer.current !== null) window.clearTimeout(coordinateInputTimer.current);
+    if (!value.trim()) return;
+    coordinateInputTimer.current = window.setTimeout(() => {
+      const parsed = parseCoordinates(value);
+      if (!parsed) {
+        setCoordinateError("日本国内の緯度・経度を読み取れませんでした。Google Mapsからコピーした座標かURLを貼り付けてください。");
+        return;
+      }
+      setCoordinateError(null);
+      onPreviewLocation(parsed);
+    }, 600);
   }
 
-  function previewCoordinateText() {
-    const parsed = parseCoordinates(coordinateText);
-    if (!parsed) {
-      setCoordinateError("日本国内の緯度・経度を読み取れませんでした。Google Mapsからコピーした座標かURLを貼り付けてください。");
-      return;
-    }
-    onPreviewLocation(parsed);
+  function changeMunicipality(value: string) {
+    const manuallyEdited = Boolean(value.trim());
+    municipalityValueRef.current = value;
+    municipalityEditedRef.current = manuallyEdited;
+    setMunicipalityManuallyEdited(manuallyEdited);
+    setMunicipality(value);
+  }
+
+  function pickLocationOnMap() {
+    coordinateSource.current = "map";
+    if (coordinateInputTimer.current !== null) window.clearTimeout(coordinateInputTimer.current);
+    onPickLocation();
   }
 
   async function selectPhoto(event: React.ChangeEvent<HTMLInputElement>) {
@@ -245,15 +278,12 @@ export function SubmissionDialog({
                   placeholder="例：35.768867, 139.342782"
                   aria-invalid={Boolean(coordinateError)}
                 />
-                <span className="field-help">Google Mapsからコピーした座標・URL、北緯／東経、度分秒にも対応します。</span>
-                {coordinates && <span className="coordinate-confirmed"><LocateFixed />地図で選択済み</span>}
+                <span className="field-help">Google Mapsからコピーした座標・URL、北緯／東経、度分秒を貼り付けると自動で反映します。</span>
+                {coordinates && <span className="coordinate-confirmed"><LocateFixed />投稿位置に反映済み</span>}
                 {coordinateError && <span className="coordinate-error" role="alert">{coordinateError}</span>}
               </label>
               <div className="location-picker-actions">
-                <Button type="button" variant="outline" onClick={previewCoordinateText} disabled={!coordinateText.trim()}>
-                  入力した場所を地図で確認
-                </Button>
-                <Button type="button" variant="outline" onClick={onPickLocation}>
+                <Button type="button" variant="outline" onClick={pickLocationOnMap}>
                   <LocateFixed />地図から選ぶ
                 </Button>
               </div>
@@ -285,8 +315,12 @@ export function SubmissionDialog({
               </label>
               <label className="field-group">
                 <span className="field-label">市区町村 <b>必須</b></span>
-                <Input name="municipality" required maxLength={80} value={municipality} onChange={(event) => setMunicipality(event.target.value)} placeholder={municipalityLoading ? "地図から取得しています…" : "例：千葉市美浜区"} />
-                <span className="field-help">地図から自動入力します。境界付近などで違う場合は直せます。</span>
+                <Input name="municipality" required maxLength={80} value={municipality} onChange={(event) => changeMunicipality(event.target.value)} placeholder={municipalityLoading ? "座標から取得しています…" : "例：千葉市美浜区"} />
+                <span className="field-help">
+                  {municipalityManuallyEdited
+                    ? "手入力した内容を保持します。座標を直しても勝手に上書きしません。"
+                    : "座標から自動入力します。境界付近などで違う場合は直せます。"}
+                </span>
               </label>
               <label className="field-group field-wide">
                 <span className="field-label">表示用の目印（任意）</span>
