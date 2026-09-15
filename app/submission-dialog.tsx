@@ -311,7 +311,7 @@ export function SubmissionDialog({
               </label>
               <label className="field-group">
                 <span className="field-label">大型の株数</span>
-                <Input name="plantCount" type="number" min={1} max={1000} placeholder="子株を除き、おおよそで可" />
+                <Input name="plantCount" type="number" min={0} max={1000} placeholder="子株を除き、おおよそで可（0株も可）" />
               </label>
               <label className="field-group">
                 <span className="field-label">市区町村 <b>必須</b></span>

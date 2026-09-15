@@ -29,7 +29,9 @@ const submissionSchema = z
     // browser/API reject every year after 1970. The current-year check lives
     // in superRefine so it runs when the request is actually submitted.
     previousBloomYear: z.union([z.literal(""), z.coerce.number().int().min(1900)]),
-    plantCount: z.union([z.literal(""), z.coerce.number().int().min(1).max(1000)]),
+    // Zero is meaningful: a location may have no large (mature) plants while
+    // still being a valid record (for example, only pups remain).
+    plantCount: z.union([z.literal(""), z.coerce.number().int().min(0).max(1000)]),
     latitude: z.coerce.number().min(-85).max(85),
     longitude: z.coerce.number().min(-180).max(180),
     municipality: z.string().trim().min(2).max(80),
